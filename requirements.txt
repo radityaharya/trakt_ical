@@ -1,0 +1,4 @@
+icalendar==4.1.0
+python-dotenv==0.21.0
+requests==2.25.1
+trakt==3.4.0

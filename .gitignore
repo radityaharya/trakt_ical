@@ -1,0 +1,6 @@
+.env
+trakt.ics
+__pycache__/
+*.pyc
+.vscode/
+trakt_config.json
