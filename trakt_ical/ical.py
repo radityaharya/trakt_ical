@@ -7,7 +7,6 @@ from trakt.calendar import MyShowCalendar
 from trakt.users import User
 from icalendar import Calendar, Event
 from dotenv import load_dotenv
-from util import upload_to_s3
 
 load_dotenv(override=True)
 trakt.core.CONFIG_PATH = "./trakt_config.json"
@@ -21,7 +20,7 @@ def main():
     them
     """
     episodes = MyShowCalendar(
-        days=365, extended="full", date=datetime.datetime.now().strftime("%Y-%m-%d")
+        days=365, extended="full", date=(datetime.datetime.now() - datetime.timedelta(days=30)).strftime("%Y-%m-%d")
     )
 
     cal = Calendar()
@@ -43,18 +42,4 @@ def main():
         else:
             event.add("description", episode.title)
         cal.add_component(event)
-
-    with open(ICAL_PATH, "wb") as f:
-        f.write(cal.to_ical())
-
-
-if __name__ == "__main__":
-    main()
-    print(
-        upload_to_s3(
-            os.getenv("STORAGE_ENDPOINT"),
-            ICAL_PATH,
-            os.getenv("X_API_KEY"),
-            "trakt.ics",
-        )
-    )
+    return cal.to_ical().decode("utf-8")
