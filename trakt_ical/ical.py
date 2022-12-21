@@ -9,8 +9,17 @@ from icalendar import Calendar, Event
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
-trakt.core.CONFIG_PATH = "./trakt_config.json"
-me = User("otied")
+if not os.path.exists("./trakt_config.json"):
+    trakt.core.CLIENT_ID = os.environ.get("TRAKT_CLIENT_ID")
+    trakt.core.CLIENT_SECRET = os.environ.get("TRAKT_CLIENT_SECRET")
+    trakt.core.OAUTH_TOKEN = os.environ.get("TRAKT_OAUTH_TOKEN")
+else:
+    trakt.core.CONFIG_PATH = "./trakt_config.json"
+try:
+    me = User("otied")
+except Exception as e:
+    print(e)
+
 ICAL_PATH = "./trakt.ics"
 
 
