@@ -2,7 +2,8 @@ cryptography
 Flask
 flask_caching
 icalendar
-montydb[bson]
+montydb
 python-dotenv
 requests
 trakt
+bson
