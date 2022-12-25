@@ -6,4 +6,4 @@ montydb
 python-dotenv
 requests
 trakt
-bson
+pymongo
