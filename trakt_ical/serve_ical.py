@@ -112,7 +112,7 @@ def get_user_info(trakt_access_token: str = None):
 @app.route("/auth")
 def authorize():
     return redirect(
-        f'https://trakt.tv/oauth/authorize?response_type=code&client_id={CLIENT_ID}&redirect_uri={url_for("callback", _external=True)}'
+        f'https://trakt.tv/oauth/authorize?response_type=code&client_id={CLIENT_ID}&redirect_uri={os.environ.get("HOST")}/trakt/callback'
     )
 
 
