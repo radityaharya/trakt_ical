@@ -7,7 +7,6 @@ if __name__ == "__main__":
     parser.add_argument("--serve", help="Serve the ical file", action='store_true')
     parser.add_argument("--host", help="Host to serve the ical file", default="0.0.0.0")
     parser.add_argument("--port", help="Port to serve the ical file", default=8000)
-    parser.add_argument("--file", help="output file")
     parser.add_argument("--debug", help="Debug mode", default= False)
     
     args = parser.parse_args()
