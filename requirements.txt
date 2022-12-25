@@ -1,5 +1,8 @@
+cryptography==2.8
 Flask==2.2.2
-Flask_Caching==2.0.1
-icalendar==4.1.0
+flask_caching==2.0.1
+icalendar==5.0.3
+montydb==2.4.0
 python-dotenv==0.21.0
+requests==2.22.0
 trakt==3.4.0
