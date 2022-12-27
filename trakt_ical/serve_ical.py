@@ -16,10 +16,6 @@ from util import decrypt, encrypt
 set_storage("./data", use_bson=True, mongo_version="4.0")
 col = MontyClient("./data").db.users
 
-APPLICATION_ID = "91747"
-CLIENT_ID = "2639926d559940db44dd834e0d9949264db24ddd1d84434319dae888ff9c2bcb"
-CLIENT_SECRET = "6a717daeed65d521a119ac2e12a43b6500e4a8f3532aa7a994811433f5c0a72e"
-
 config = {"DEBUG": False, "CACHE_TYPE": "SimpleCache", "CACHE_DEFAULT_TIMEOUT": 3600}
 app = Flask(__name__)
 app.config.from_mapping(config)
@@ -28,6 +24,7 @@ cache = Cache(app)
 
 load_dotenv(override=True)
 
+APPLICATION_ID = os.environ.get("TRAKT_APPLICATION_ID")
 CLIENT_ID = os.environ.get("TRAKT_CLIENT_ID")
 CLIENT_SECRET = os.environ.get("TRAKT_CLIENT_SECRET")
 
