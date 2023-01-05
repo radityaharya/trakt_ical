@@ -5,6 +5,7 @@ import json
 
 load_dotenv(override=True)
 
+
 def encrypt(data):
     if os.environ.get("SECRET_KEY"):
         key = os.environ.get("SECRET_KEY")
