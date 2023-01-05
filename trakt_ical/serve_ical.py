@@ -28,10 +28,10 @@ CLIENT_ID = os.environ.get("TRAKT_CLIENT_ID")
 CLIENT_SECRET = os.environ.get("TRAKT_CLIENT_SECRET")
 
 
-def get_calendar(trakt_access_token: str = None)->str:
+def get_calendar(trakt_access_token: str = None) -> str:
     """
     Returns the calendar in iCal format for the next 365 days encoded in utf-8
-    
+
     Returns:
         str: iCal calendar
     """
@@ -72,7 +72,10 @@ def get_token(key: str):
     user_token = col.find_one({"user_id": key})["token"]
     user_token = decrypt(user_token)
     # check if the token is expired
-    if datetime.datetime.now().timestamp() < user_token["created_at"] + user_token["expires_in"]:
+    if (
+        datetime.datetime.now().timestamp()
+        < user_token["created_at"] + user_token["expires_in"]
+    ):
         print("Token is not expired")
         return user_token
     # refresh the token if it is expired
@@ -235,7 +238,7 @@ def index():
 def serve(host: str = "0.0.0.0", port: int = 8000, debug: bool = False):
     """
     Run the app
-    
+
     :param host: Host to run the app on
     :param port: Port to run the app on
     :param debug: Enable debug mode
