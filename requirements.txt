@@ -2,8 +2,7 @@ cryptography
 Flask
 flask_caching
 icalendar
-montydb
 python-dotenv
 requests
 trakt
-pymongo
+pymongo[srv]

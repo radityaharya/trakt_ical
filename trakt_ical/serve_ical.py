@@ -9,12 +9,11 @@ from dotenv import load_dotenv
 from flask import Flask, Response, redirect, request, url_for
 from flask_caching import Cache
 from icalendar import Calendar, Event
-from montydb import MontyClient, set_storage
+import pymongo
 from trakt.calendar import MyShowCalendar
 from util import decrypt, encrypt
 
-set_storage("./data", use_bson=True, mongo_version="4.0")
-col = MontyClient("./data").db.users
+col = pymongo.MongoClient(os.environ.get("MONGO_URL")).trakt_ical.users
 
 config = {"DEBUG": False, "CACHE_TYPE": "SimpleCache", "CACHE_DEFAULT_TIMEOUT": 3600}
 app = Flask(__name__)
