@@ -257,7 +257,7 @@ def complete():
     <br>
     <p>Authenticated as <strong>{username}</strong></p>
     <div>
-        <label for="days_from">Days Ago:</label>
+        <label for="days_ago">Days Ago:</label>
         <input type="number" id="days_ago" value="30" onchange="editUrl()">
         <label for="days">Days Ahead:</label>
         <input type="number" id="days" value="365" max="365" min="30" onchange="editUrl()">
@@ -315,7 +315,7 @@ def complete():
         var base_url = url.substring(0, url.lastIndexOf("/"));
         var key = url.substring(url.lastIndexOf("=") + 1);
         
-        var date = document.getElementById("days_ago").value;
+        var days_ago = document.getElementById("days_ago").value;
         var days = document.getElementById("days").value;
                 
         var newurl = new URL(base_url);
