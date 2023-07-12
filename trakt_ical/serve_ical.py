@@ -1,18 +1,18 @@
 import datetime
 import os
+import tempfile
 
 import requests
 import trakt
 import trakt.core
 from cryptography.fernet import Fernet
 from dotenv import load_dotenv
-from flask import Flask, Response, redirect, request, url_for, send_file
+from flask import Flask, Response, redirect, request, url_for
 from flask_caching import Cache
 from icalendar import Calendar, Event
 import pymongo
 from trakt.calendar import MyShowCalendar
 from util import decrypt, encrypt
-import tempfile
 
 col = pymongo.MongoClient(os.environ.get("MONGO_URL")).trakt_ical.users
 
@@ -81,6 +81,57 @@ def get_calendar(
     return cal.to_ical().decode("utf-8")
 
 
+@cache.cached(timeout=3600, query_string=["key", "start_date", "period"])
+@app.route("/preview")
+def get_calendar_preview():
+    """
+    Returns the calendar in iCal format for the next 365 days encoded in utf-8
+
+    Returns:
+        str: iCal calendar
+        start_date (datetime.datetime, optional): The start date of the calendar. Defaults to None.
+        period (int, optional): The number of days to include in the calendar. Defaults to 365.
+    """
+    key = request.args.get("key")
+    start_date = request.args.get("start_date")
+    period = request.args.get("period")
+
+    if not key:
+        return "No key provided", 400
+    trakt_access_token = get_token(key)["access_token"]
+    trakt.core.CLIENT_ID = CLIENT_ID
+    trakt.core.CLIENT_SECRET = CLIENT_SECRET
+    trakt.core.OAUTH_TOKEN = trakt_access_token
+
+    start_date = (
+        start_date
+        if start_date
+        else (datetime.datetime.now() - datetime.timedelta(days=30)).strftime(
+            "%Y-%m-%d"
+        )
+    )
+
+    episodes = MyShowCalendar(
+        days=period if period else 365,
+        extended="full",
+        date=start_date,
+    )
+
+    json = []
+    for episode in episodes:
+        json.append(
+            {
+                "show": episode.show,
+                "season": episode.season,
+                "number": episode.number,
+                "title": episode.title,
+                "overview": episode.overview,
+                "airs_at": episode.airs_at,
+            }
+        )
+    return json
+
+
 def get_token(key: str):
     """
     Returns the token for the user with the given key
@@ -104,7 +155,6 @@ def get_token(key: str):
         "redirect_uri": os.environ.get("HOST") + "/trakt/callback",
     }
     response = requests.post("https://trakt.tv/oauth/token", data=data, timeout=5)
-    print(response.json())
     user_slug = get_user_info(response.json()["access_token"])["user"]["ids"]["slug"]
     col.update_one(
         {"user_slug": user_slug}, {"$set": {"token": encrypt(response.json())}}
@@ -129,6 +179,9 @@ def get_user_info(trakt_access_token: str = None):
 
 @app.route("/auth")
 def authorize():
+    """
+    Redirects the user to the Trakt authorization page
+    """
     return redirect(
         f'https://trakt.tv/oauth/authorize?response_type=code&client_id={CLIENT_ID}&redirect_uri={os.environ.get("HOST")}/trakt/callback'
     )
@@ -172,10 +225,20 @@ def complete():
         return redirect(url_for("authorize"))
     trakt_access_token = get_token(key)["access_token"]
     username = get_user_info(trakt_access_token)["user"]["username"]
+
     page = f"""
     <html>
     <head>
     <title>Trakt ical</title>
+    <style>
+    table, th, td {{
+        border: 1px solid;
+    }}
+
+    th, td{{
+        padding: 5px
+    }}
+    </style>
     </head>
     <body>
     <h1 style="margin-bottom: 5px;">Trakt ICal Feed</h1>
@@ -200,6 +263,12 @@ def complete():
     <p>1. Go to <a target="_blank" href="https://outlook.live.com/calendar/0/subscriptions">https://outlook.live.com/calendar/0/subscriptions</a></p>
     <p>2. Paste the following link into the field and click "Add"</p>
     
+    <p>Preview:</p>
+    <div id="preview"></div>
+    <noscript>
+        <p style="color: red;">Javascript is required to render the preview table</p>
+    </noscript>
+    
     </body>
     <script>
     function editUrl() {{
@@ -222,8 +291,8 @@ def complete():
         
         const final_url = `${{newurl}}?${{params.toString()}}`;
         
-        //set new url
         document.getElementById("url").innerHTML = `<a href="${{final_url}}">${{final_url}}</a>`;
+        renderPreviewTable()
     }}
     
     function copyUrl() {{
@@ -231,7 +300,63 @@ def complete():
         navigator.clipboard.writeText(url);
     }}
     
+    async function renderPreviewTable(){{
+        var table = document.getElementById("preview");
+        
+        const url = window.location.href;
+        var base_url = url.substring(0, url.lastIndexOf("/"));
+        var key = url.substring(url.lastIndexOf("=") + 1);
+        
+        var date = document.getElementById("date").value;
+        var days = document.getElementById("days").value;
+                
+        var newurl = new URL(base_url);
+        newurl = newurl.toString();
+        newurl = newurl.split("?")[0];
+        
+        var params = new URLSearchParams();
+        
+        params.append("key", key);
+        params.append("start_date", date);
+        params.append("period", days);
+        
+        const final_url = `${{newurl}}preview?${{params.toString()}}`;
+        
+        table.innerHTML = "";
+        
+        tablehead = table.appendChild(document.createElement("thead"));
+        tablebody = table.appendChild(document.createElement("tbody"));
+        
+        tablehead.innerHTML = `
+            <tr>
+                <th>Show</th>
+                <th>Season</th>
+                <th>Episode</th>
+                <th>Title</th>
+                <th>Overview</th>
+                <th>Air date</th>
+            </tr>
+        `;
+        
+        const response = await fetch(final_url);
+        const data = await response.json();
+        
+        console.log(data);
+        
+        tablebody.innerHTML = data.map(item => `
+            <tr>
+                <td>${{item.show}}</td>
+                <td>${{item.season}}</td>
+                <td>${{item.number}}</td>
+                <td>${{item.title}}</td>
+                <td>${{item.overview}}</td>
+                <td>${{item.airs_at}}</td>
+            </tr>
+        `).join("");
+    }}
+    
     editUrl();
+    renderPreviewTable();
     </script>
     </html>
     """
