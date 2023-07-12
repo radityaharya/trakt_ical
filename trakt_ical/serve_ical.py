@@ -31,7 +31,7 @@ CLIENT_SECRET = os.environ.get("TRAKT_CLIENT_SECRET")
 
 def get_calendar(
     trakt_access_token: str = None,
-    start_date: datetime.datetime = None,
+    days_ago: int = None,
     period: int = 365,
 ):
     """
@@ -39,7 +39,7 @@ def get_calendar(
 
     Returns:
         str: iCal calendar
-        start_date (datetime.datetime, optional): The start date of the calendar. Defaults to None.
+        days_ago (int): days ago to start the calendar. Defaults to None.
         period (int, optional): The number of days to include in the calendar. Defaults to 365.
     """
     trakt.core.CLIENT_ID = CLIENT_ID
@@ -47,8 +47,12 @@ def get_calendar(
     trakt.core.OAUTH_TOKEN = trakt_access_token
 
     start_date = (
-        start_date.strftime("%Y-%m-%d")
-        if start_date
+        (
+            (datetime.datetime.now() - datetime.timedelta(days=days_ago)).strftime(
+                "%Y-%m-%d"
+            )
+        )
+        if days_ago
         else (datetime.datetime.now() - datetime.timedelta(days=30)).strftime(
             "%Y-%m-%d"
         )
@@ -81,7 +85,7 @@ def get_calendar(
     return cal.to_ical().decode("utf-8")
 
 
-@cache.cached(timeout=3600, query_string=["key", "start_date", "period"])
+@cache.cached(timeout=3600, query_string=["key", "days_ago", "period"])
 @app.route("/preview")
 def get_calendar_preview():
     """
@@ -93,8 +97,10 @@ def get_calendar_preview():
         period (int, optional): The number of days to include in the calendar. Defaults to 365.
     """
     key = request.args.get("key")
-    start_date = request.args.get("start_date")
+    days_ago = request.args.get("days_ago")
     period = request.args.get("period")
+
+    days_ago = int(days_ago) if days_ago else None
 
     if not key:
         return "No key provided", 400
@@ -104,13 +110,18 @@ def get_calendar_preview():
     trakt.core.OAUTH_TOKEN = trakt_access_token
 
     start_date = (
-        start_date
-        if start_date
+        (
+            (datetime.datetime.now() - datetime.timedelta(days=days_ago)).strftime(
+                "%Y-%m-%d"
+            )
+        )
+        if days_ago
         else (datetime.datetime.now() - datetime.timedelta(days=30)).strftime(
             "%Y-%m-%d"
         )
     )
 
+    print(start_date)
     episodes = MyShowCalendar(
         days=period if period else 365,
         extended="full",
@@ -244,20 +255,24 @@ def complete():
     <h1 style="margin-bottom: 5px;">Trakt ICal Feed</h1>
     <a href="https://github.com/radityaharya/trakt_ical" target="_blank" style="text-decoration: none; color: blue;">Github</a>
     <br>
-    <p>Authenticated as {username}</p>
+    <p>Authenticated as <strong>{username}</strong></p>
     <div>
-        <label for="date">Start date:</label>
-        <input type="date" id="date" value="{(datetime.datetime.now() - datetime.timedelta(days=10)).strftime("%Y-%m-%d")}" onchange="editUrl()">
-        <label for="days">Days:</label>
+        <label for="days_from">Days Ago:</label>
+        <input type="number" id="days_ago" value="30" onchange="editUrl()">
+        <label for="days">Days Ahead:</label>
         <input type="number" id="days" value="365" max="365" min="30" onchange="editUrl()">
         <button onclick="editUrl()">Update url</button>
     </div>
     <p>Now you can use the following link to get your ical file:</p>
     <p id="url"><a href="{url_for('index')}?key={key}">{url_for('index')}?key={key}</a></p>
     <button onclick="copyUrl()">Copy url</button>
+    <button onclick="addGoogle()">Add to Google Calendar</button>
     <h2>Add to Google Calendar</h2>
     <p>1. Go to <a target="_blank"href="https://calendar.google.com/calendar/r/settings/addbyurl">https://calendar.google.com/calendar/r/settings/addbyurl</a></p>
     <p>2. Paste the following link into the field and click "Add calendar"</p>
+    <p> or click the following button to add the calendar directly to your Google Calendar</p>
+    
+    <button onclick="addGoogle()">Add to Google Calendar</button>
     
     <h2>Add to Outlook</h2>
     <p>1. Go to <a target="_blank" href="https://outlook.live.com/calendar/0/subscriptions">https://outlook.live.com/calendar/0/subscriptions</a></p>
@@ -276,7 +291,7 @@ def complete():
         var base_url = url.substring(0, url.lastIndexOf("/"));
         var key = url.substring(url.lastIndexOf("=") + 1);
         
-        var date = document.getElementById("date").value;
+        var days_ago = document.getElementById("days_ago").value;
         var days = document.getElementById("days").value;
                 
         var newurl = new URL(base_url);
@@ -286,13 +301,40 @@ def complete():
         var params = new URLSearchParams();
         
         params.append("key", key);
-        params.append("start_date", date);
+        params.append("days_ago", days_ago);
         params.append("period", days);
         
         const final_url = `${{newurl}}?${{params.toString()}}`;
         
         document.getElementById("url").innerHTML = `<a href="${{final_url}}">${{final_url}}</a>`;
         renderPreviewTable()
+    }}
+    
+    function addGoogle() {{
+        const url = window.location.href;
+        var base_url = url.substring(0, url.lastIndexOf("/"));
+        var key = url.substring(url.lastIndexOf("=") + 1);
+        
+        var date = document.getElementById("days_ago").value;
+        var days = document.getElementById("days").value;
+                
+        var newurl = new URL(base_url);
+        newurl = newurl.toString();
+        newurl = newurl.split("?")[0];
+        
+        var params = new URLSearchParams();
+        
+        params.append("key", key);
+        params.append("days_ago", days_ago);
+        params.append("period", days);
+        
+        const final_url = `${{newurl}}?${{params.toString()}}`;
+        
+        var webcal_url = final_url.replace("https://", "webcal://");
+        
+        var gcalurl = "https://calendar.google.com/calendar/render?cid=" + encodeURIComponent(webcal_url);
+        
+        window.open(gcalurl, "_blank");
     }}
     
     function copyUrl() {{
@@ -307,7 +349,7 @@ def complete():
         var base_url = url.substring(0, url.lastIndexOf("/"));
         var key = url.substring(url.lastIndexOf("=") + 1);
         
-        var date = document.getElementById("date").value;
+        var days_ago = document.getElementById("days_ago").value;
         var days = document.getElementById("days").value;
                 
         var newurl = new URL(base_url);
@@ -317,7 +359,7 @@ def complete():
         var params = new URLSearchParams();
         
         params.append("key", key);
-        params.append("start_date", date);
+        params.append("days_ago", days_ago);
         params.append("period", days);
         
         const final_url = `${{newurl}}preview?${{params.toString()}}`;
@@ -363,14 +405,14 @@ def complete():
     return page
 
 
-@cache.cached(timeout=3600, query_string=["key", "start_date", "period"])
+@cache.cached(timeout=3600, query_string=["key", "days_ago", "period"])
 @app.route("/")
 def index():
     """
     Returns ical file if key is provided, otherwise redirects to /auth
     """
     key = request.args.get("key")
-    start_date = request.args.get("start_date")
+    days_ago = request.args.get("days_ago")
     period = request.args.get("period")
     if not key:
         return """
@@ -389,19 +431,7 @@ def index():
         </body>
         </html>
     """
-
-    start_date = (
-        datetime.datetime.strptime(start_date, "%Y-%m-%d") if start_date else None
-    )
     period = int(period) if period else None
-
-    start_date_str = (
-        start_date.strftime("%Y-%m-%d")
-        if start_date
-        else (datetime.datetime.now() - datetime.timedelta(days=30)).strftime(
-            "%Y-%m-%d"
-        )
-    )
 
     try:
         col.find_one({"user_id": key})
@@ -411,7 +441,7 @@ def index():
 
     calendar = get_calendar(
         trakt_access_token=trakt_access_token["access_token"],
-        start_date=start_date,
+        days_ago=days_ago,
         period=period,
     )
 
@@ -424,9 +454,7 @@ def index():
 
     response = Response(open(path, "rb"), mimetype="text/calendar")
     response.headers["Cache-Control"] = "max-age=3600"
-    response.headers[
-        "Content-Disposition"
-    ] = f"attachment; filename=trakt-calendar-{start_date_str}.ics"
+    response.headers["Content-Disposition"] = f"attachment; filename=trakt-calendar.ics"
     return response
 
 
