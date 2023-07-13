@@ -264,11 +264,13 @@ def complete():
         <button onclick="actions()">Update url</button>
     </div>
     <p style="font-size: 12px;" id="estimated_time"></p>
-    <p style="font-size: 12px;">Note: The maximum time span that can be fetched is 33 days</p>
+    <p style="font-size: 12px;">Note: The current maximum time span that can be fetched is 33 days</p>
     <p>Now you can use the following link to get your ical file:</p>
     <p id="url"><a href="{url_for('index')}?key={key}">{url_for('index')}?key={key}</a></p>
     <button onclick="copyUrl()">Copy url</button>
     <button onclick="addGoogle()">Add to Google Calendar</button>
+    <button onclick="addOutlook365()">Add to Outlook 365</button>
+    <button onclick="addOutlookLive()">Add to Outlook Live</button>
     <h2>Add to Google Calendar</h2>
     <p>1. Go to <a target="_blank"href="https://calendar.google.com/calendar/r/settings/addbyurl">https://calendar.google.com/calendar/r/settings/addbyurl</a></p>
     <p>2. Paste the following link into the field and click "Add calendar"</p>
@@ -279,6 +281,11 @@ def complete():
     <h2>Add to Outlook</h2>
     <p>1. Go to <a target="_blank" href="https://outlook.live.com/calendar/0/subscriptions">https://outlook.live.com/calendar/0/subscriptions</a></p>
     <p>2. Paste the following link into the field and click "Add"</p>
+    
+    <p> or click the following button to add the calendar directly to your Outlook</p>
+    
+    <button onclick="addOutlook365()">Add to Outlook 365</button>
+    <button onclick="addOutlookLive()">Add to Outlook Live</button>
     
     <p>Preview:</p>
     <div id="preview"></div>

@@ -76,6 +76,60 @@ function addGoogle() {
   window.open(gcalurl, "_blank");
 }
 
+function addOutlook365() {
+  const url = window.location.href;
+  var base_url = url.substring(0, url.lastIndexOf("/"));
+  var key = url.substring(url.lastIndexOf("=") + 1);
+  
+  var days_ago = document.getElementById("days_ago").value;
+  var days = document.getElementById("days").value;
+          
+  var newurl = new URL(base_url);
+  newurl = newurl.toString();
+  newurl = newurl.split("?")[0];
+  
+  var params = new URLSearchParams();
+  
+  params.append("key", key);
+  params.append("days_ago", days_ago);
+  params.append("period", days);
+  
+  const final_url = `${newurl}?${params.toString()}`;
+
+  var webcal_url = final_url.replace("https://", "webcal://");
+
+  var outlook365url = "https://outlook.office.com/owa?path=%2Fcalendar%2Faction%2Fcompose&rru=addsubscription&url=" + encodeURIComponent(webcal_url) + "&name=Trakt%20iCal";
+
+  window.open(outlook365url, "_blank");
+}
+
+function addOutlookLive() {
+  const url = window.location.href;
+  var base_url = url.substring(0, url.lastIndexOf("/"));
+  var key = url.substring(url.lastIndexOf("=") + 1);
+  
+  var days_ago = document.getElementById("days_ago").value;
+  var days = document.getElementById("days").value;
+          
+  var newurl = new URL(base_url);
+  newurl = newurl.toString();
+  newurl = newurl.split("?")[0];
+  
+  var params = new URLSearchParams();
+  
+  params.append("key", key);
+  params.append("days_ago", days_ago);
+  params.append("period", days);
+  
+  const final_url = `${newurl}?${params.toString()}`;
+
+  var webcal_url = final_url.replace("https://", "webcal://");
+
+  var outlookliveurl = "https://outlook.live.com/owa?path=%2Fcalendar%2Faction%2Fcompose&rru=addsubscription&url=" + encodeURIComponent(webcal_url) + "&name=Trakt%20iCal";
+
+  window.open(outlookliveurl, "_blank");
+}
+
 function copyUrl() {
   var url = document.getElementById("url").innerText;
   navigator.clipboard.writeText(url);
