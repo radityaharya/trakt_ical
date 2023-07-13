@@ -46,6 +46,8 @@ def get_calendar(
     trakt.core.CLIENT_SECRET = CLIENT_SECRET
     trakt.core.OAUTH_TOKEN = trakt_access_token
 
+    days_ago = int(days_ago) if days_ago else None
+
     start_date = (
         (
             (datetime.datetime.now() - datetime.timedelta(days=days_ago)).strftime(
@@ -149,14 +151,12 @@ def get_token(key: str):
     """
     user_token = col.find_one({"user_id": key})["token"]
     user_token = decrypt(user_token)
-    # check if the token is expired
     if (
         datetime.datetime.now().timestamp()
         < user_token["created_at"] + user_token["expires_in"]
     ):
         print("Token is not expired")
         return user_token
-    # refresh the token if it is expired
     print("Refreshing token")
     data = {
         "refresh_token": user_token["refresh_token"],
@@ -257,12 +257,14 @@ def complete():
     <br>
     <p>Authenticated as <strong>{username}</strong></p>
     <div>
-        <label for="days_ago">Days Ago:</label>
-        <input type="number" id="days_ago" value="30" onchange="editUrl()">
+        <label for="days_from">Days Ago:</label>
+        <input type="number" id="days_ago" value="1" onchange="actions()">
         <label for="days">Days Ahead:</label>
-        <input type="number" id="days" value="365" max="365" min="30" onchange="editUrl()">
-        <button onclick="editUrl()">Update url</button>
+        <input type="number" id="days" value="32" max="365" min="30" onchange="actions()">
+        <button onclick="actions()">Update url</button>
     </div>
+    <p style="font-size: 12px;" id="estimated_time"></p>
+    <p style="font-size: 12px;">Note: The maximum time span that can be fetched is 33 days</p>
     <p>Now you can use the following link to get your ical file:</p>
     <p id="url"><a href="{url_for('index')}?key={key}">{url_for('index')}?key={key}</a></p>
     <button onclick="copyUrl()">Copy url</button>
@@ -285,121 +287,7 @@ def complete():
     </noscript>
     
     </body>
-    <script>
-    function editUrl() {{
-        const url = window.location.href;
-        var base_url = url.substring(0, url.lastIndexOf("/"));
-        var key = url.substring(url.lastIndexOf("=") + 1);
-        
-        var days_ago = document.getElementById("days_ago").value;
-        var days = document.getElementById("days").value;
-                
-        var newurl = new URL(base_url);
-        newurl = newurl.toString();
-        newurl = newurl.split("?")[0];
-        
-        var params = new URLSearchParams();
-        
-        params.append("key", key);
-        params.append("days_ago", days_ago);
-        params.append("period", days);
-        
-        const final_url = `${{newurl}}?${{params.toString()}}`;
-        
-        document.getElementById("url").innerHTML = `<a href="${{final_url}}">${{final_url}}</a>`;
-        renderPreviewTable()
-    }}
-    
-    function addGoogle() {{
-        const url = window.location.href;
-        var base_url = url.substring(0, url.lastIndexOf("/"));
-        var key = url.substring(url.lastIndexOf("=") + 1);
-        
-        var days_ago = document.getElementById("days_ago").value;
-        var days = document.getElementById("days").value;
-                
-        var newurl = new URL(base_url);
-        newurl = newurl.toString();
-        newurl = newurl.split("?")[0];
-        
-        var params = new URLSearchParams();
-        
-        params.append("key", key);
-        params.append("days_ago", days_ago);
-        params.append("period", days);
-        
-        const final_url = `${{newurl}}?${{params.toString()}}`;
-        
-        var webcal_url = final_url.replace("https://", "webcal://");
-        
-        var gcalurl = "https://calendar.google.com/calendar/render?cid=" + encodeURIComponent(webcal_url);
-        
-        window.open(gcalurl, "_blank");
-    }}
-    
-    function copyUrl() {{
-        var url = document.getElementById("url").innerText;
-        navigator.clipboard.writeText(url);
-    }}
-    
-    async function renderPreviewTable(){{
-        var table = document.getElementById("preview");
-        
-        const url = window.location.href;
-        var base_url = url.substring(0, url.lastIndexOf("/"));
-        var key = url.substring(url.lastIndexOf("=") + 1);
-        
-        var days_ago = document.getElementById("days_ago").value;
-        var days = document.getElementById("days").value;
-                
-        var newurl = new URL(base_url);
-        newurl = newurl.toString();
-        newurl = newurl.split("?")[0];
-        
-        var params = new URLSearchParams();
-        
-        params.append("key", key);
-        params.append("days_ago", days_ago);
-        params.append("period", days);
-        
-        const final_url = `${{newurl}}preview?${{params.toString()}}`;
-        
-        table.innerHTML = "";
-        
-        tablehead = table.appendChild(document.createElement("thead"));
-        tablebody = table.appendChild(document.createElement("tbody"));
-        
-        tablehead.innerHTML = `
-            <tr>
-                <th>Show</th>
-                <th>Season</th>
-                <th>Episode</th>
-                <th>Title</th>
-                <th>Overview</th>
-                <th>Air date</th>
-            </tr>
-        `;
-        
-        const response = await fetch(final_url);
-        const data = await response.json();
-        
-        console.log(data);
-        
-        tablebody.innerHTML = data.map(item => `
-            <tr>
-                <td>${{item.show}}</td>
-                <td>${{item.season}}</td>
-                <td>${{item.number}}</td>
-                <td>${{item.title}}</td>
-                <td>${{item.overview}}</td>
-                <td>${{item.airs_at}}</td>
-            </tr>
-        `).join("");
-    }}
-    
-    editUrl();
-    renderPreviewTable();
-    </script>
+    <script type="text/javascript" src="/static/js/script.js"></script>
     </html>
     """
     return page
