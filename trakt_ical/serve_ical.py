@@ -109,8 +109,8 @@ def get_calendar(
     trakt.core.CLIENT_SECRET = CLIENT_SECRET
     trakt.core.OAUTH_TOKEN = trakt_access_token
 
-    days_ago = int(days_ago)
-    period = int(period)
+    days_ago = int(days_ago) if days_ago else 30
+    period = int(period) if period else 90
 
     episodes = get_episodes_batch(days_ago, period)
 
