@@ -154,7 +154,7 @@ def get_calendar_preview():
     period = request.args.get("period")
 
     days_ago = int(days_ago) if days_ago else 30
-    period = int(period) if period else 30
+    period = int(period) if period else 90
 
     if not key:
         return "No key provided", 400
@@ -307,7 +307,7 @@ def index():
         </body>
         </html>
     """
-    period = int(period) if period else None
+    period = int(period) if period else 90
 
     user = col.find_one({"user_id": key})
     if not user:
