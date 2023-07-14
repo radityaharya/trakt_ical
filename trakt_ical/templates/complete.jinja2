@@ -1,0 +1,153 @@
+<html>
+
+<head>
+  <title>Trakt ical</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 0px;
+      margin: 0px;
+      overflow-x: hidden;
+    }
+
+    main {
+      margin: 20px;
+    }
+
+    h1 {
+      font-size: 36px;
+      margin: 20px 0;
+    }
+
+    h2 {
+      font-size: 24px;
+      margin: 20px 0;
+    }
+
+    p {
+      font-size: 16px;
+      margin: 10px 0;
+    }
+
+    a {
+      color: #f2f2f2 text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    label {
+      font-size: 16px;
+      margin-right: 10px;
+    }
+
+    input[type="number"] {
+      width: 50px;
+      font-size: 16px;
+      padding: 5px;
+      margin-right: 10px;
+      border: 1px solid #3e3e3e;
+      border-radius: 4px;
+    }
+
+    button {
+      font-size: 16px;
+      padding: 5px 10px;
+      margin: 10px 0;
+      background-color: rgb(237, 28, 36);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: rgba(237, 28, 36, 0.8);
+
+    }
+
+    table {
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+
+    th,
+    td {
+      border: 1px solid black;
+      padding: 5px;
+    }
+
+    th {
+      background-color: #f2f2f2;
+    }
+
+    footer {
+      background-color: #f2f2f2;
+      padding: 10px;
+      text-align: center;
+      bottom: 0;
+      width: 100%;
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <h1 style="margin-bottom: 5px;">Trakt ICal Feed</h1>
+    <a href="https://github.com/radityaharya/trakt_ical" target="_blank"
+      style="text-decoration: none; color: blue;">Github</a>
+    <br>
+    <p>Authenticated as <strong>{{username}}</strong></p>
+    <div>
+      <label for="days_from">Days Ago:</label>
+      <input type="number" id="days_ago" value="30" max="30" onchange="actions()">
+      <label for="days">Days Ahead:</label>
+      <input type="number" id="days" value="90" max="90" min="0" onchange="actions()">
+      <button onclick="actions()">Update url</button>
+    </div>
+    <p style="font-size: 12px;" id="estimated_time"></p>
+    <p style="font-size: 12px;">Note: The current maximum time span that can be fetched is 30 days back and 90 days
+      ahead
+    </p>
+    <p>Now you can use the following link to get your ical file:</p>
+    <p id="url"><a href="{{url}}">{{url}}</a></p>
+    <button onclick="copyUrl()">Copy url</button>
+    <button onclick="addGoogle()">Add to Google Calendar</button>
+    <button onclick="addOutlook365()">Add to Outlook 365</button>
+    <button onclick="addOutlookLive()">Add to Outlook Live</button>
+    <h2>Add to Google Calendar</h2>
+    <p>1. Go to <a target="_blank"
+        href="https://calendar.google.com/calendar/r/settings/addbyurl">https://calendar.google.com/calendar/r/settings/addbyurl</a>
+    </p>
+    <p>2. Paste the following link into the field and click "Add calendar"</p>
+    <p> or click the following button to add the calendar directly to your Google Calendar</p>
+
+    <button onclick="addGoogle()">Add to Google Calendar</button>
+
+    <h2>Add to Outlook</h2>
+    <p>1. Go to <a target="_blank"
+        href="https://outlook.live.com/calendar/0/subscriptions">https://outlook.live.com/calendar/0/subscriptions</a>
+    </p>
+    <p>2. Paste the following link into the field and click "Add"</p>
+
+    <p> or click the following button to add the calendar directly to your Outlook</p>
+
+    <button onclick="addOutlook365()">Add to Outlook 365</button>
+    <button onclick="addOutlookLive()">Add to Outlook Live</button>
+
+    <p>Preview:</p>
+    <div id="preview"></div>
+    <noscript>
+      <p style="color: red;">Javascript is required to render the preview table</p>
+    </noscript>
+
+  </main>
+  <footer style="margin-top: 50px;">
+    <p>powered by <span> <a href="https://trakt.com"><img src="/static/img/trakt-wide-red-black.svg" alt="trakt logo"
+            style="height: 20px;"></span></a></p>
+  </footer>
+</body>
+<script type="text/javascript" src="/static/js/script.js"></script>
+
+</html>

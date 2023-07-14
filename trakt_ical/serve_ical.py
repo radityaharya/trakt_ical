@@ -1,16 +1,18 @@
+import concurrent.futures
 import datetime
 import os
+import re
 import tempfile
 
+import pymongo
 import requests
 import trakt
 import trakt.core
 from cryptography.fernet import Fernet
 from dotenv import load_dotenv
-from flask import Flask, Response, redirect, request, url_for
+from flask import Flask, Response, redirect, request, url_for, render_template
 from flask_caching import Cache
 from icalendar import Calendar, Event
-import pymongo
 from trakt.calendar import MyShowCalendar
 from util import decrypt, encrypt
 
@@ -28,11 +30,72 @@ APPLICATION_ID = os.environ.get("TRAKT_APPLICATION_ID")
 CLIENT_ID = os.environ.get("TRAKT_CLIENT_ID")
 CLIENT_SECRET = os.environ.get("TRAKT_CLIENT_SECRET")
 
+MAX_DAYS_AGO = 30
+MAX_PERIOD = 90
+
+
+def get_episodes_batch(days_ago, period):
+    """
+    Returns the episodes for the given start date and days
+    """
+    episodes = []
+    if days_ago > MAX_DAYS_AGO or period > MAX_PERIOD:
+        raise ValueError(
+            f"days_ago must be less than {MAX_DAYS_AGO} and period must be less than {MAX_PERIOD}"
+        )
+
+    def get_episodes(start_date, days):
+        print(start_date, days)
+        return MyShowCalendar(
+            days=days,
+            extended="full",
+            date=start_date,
+        )
+
+    start_date = (datetime.datetime.now() - datetime.timedelta(days=days_ago)).strftime(
+        "%Y-%m-%d"
+    )
+    end_date = (datetime.datetime.now() + datetime.timedelta(days=period)).strftime(
+        "%Y-%m-%d"
+    )
+
+    if (
+        datetime.datetime.strptime(end_date, "%Y-%m-%d")
+        - datetime.datetime.strptime(start_date, "%Y-%m-%d")
+    ).days < 33:
+        episodes = get_episodes(start_date, period)
+    else:
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futures = []
+            batch_start_date = start_date
+            while (
+                datetime.datetime.strptime(end_date, "%Y-%m-%d")
+                - datetime.datetime.strptime(batch_start_date, "%Y-%m-%d")
+            ).days > 33:
+                futures.append(executor.submit(get_episodes, batch_start_date, 33))
+                batch_start_date = (
+                    datetime.datetime.strptime(batch_start_date, "%Y-%m-%d")
+                    + datetime.timedelta(days=33)
+                ).strftime("%Y-%m-%d")
+            futures.append(
+                executor.submit(
+                    get_episodes,
+                    batch_start_date,
+                    (
+                        datetime.datetime.strptime(end_date, "%Y-%m-%d")
+                        - datetime.datetime.strptime(batch_start_date, "%Y-%m-%d")
+                    ).days,
+                )
+            )
+            for future in concurrent.futures.as_completed(futures):
+                episodes += future.result()
+    return episodes
+
 
 def get_calendar(
     trakt_access_token: str = None,
-    days_ago: int = None,
-    period: int = 365,
+    days_ago: int = 30,
+    period: int = 30,
 ):
     """
     Returns the calendar in iCal format for the next 365 days encoded in utf-8
@@ -46,25 +109,10 @@ def get_calendar(
     trakt.core.CLIENT_SECRET = CLIENT_SECRET
     trakt.core.OAUTH_TOKEN = trakt_access_token
 
-    days_ago = int(days_ago) if days_ago else None
+    days_ago = int(days_ago)
+    period = int(period)
 
-    start_date = (
-        (
-            (datetime.datetime.now() - datetime.timedelta(days=days_ago)).strftime(
-                "%Y-%m-%d"
-            )
-        )
-        if days_ago
-        else (datetime.datetime.now() - datetime.timedelta(days=30)).strftime(
-            "%Y-%m-%d"
-        )
-    )
-
-    episodes = MyShowCalendar(
-        days=period if period else 365,
-        extended="full",
-        date=start_date,
-    )
+    episodes = get_episodes_batch(days_ago, period)
 
     cal = Calendar()
     cal.add("prodid", "-//Trakt//trakt_ical//EN")
@@ -75,7 +123,10 @@ def get_calendar(
         event = Event()
         event.add("summary", summary)
         event.add("dtstart", episode.airs_at)
-        event.add("dtend", episode.airs_at + datetime.timedelta(minutes=30))
+        event.add(
+            "dtend",
+            episode.airs_at + datetime.timedelta(minutes=episode.show_data.runtime),
+        )
         event.add("dtstamp", datetime.datetime.now())
         event.add("uid", f"{episode.show}-{episode.season}-{episode.number}")
         overview = episode.overview
@@ -102,7 +153,8 @@ def get_calendar_preview():
     days_ago = request.args.get("days_ago")
     period = request.args.get("period")
 
-    days_ago = int(days_ago) if days_ago else None
+    days_ago = int(days_ago) if days_ago else 30
+    period = int(period) if period else 30
 
     if not key:
         return "No key provided", 400
@@ -111,26 +163,12 @@ def get_calendar_preview():
     trakt.core.CLIENT_SECRET = CLIENT_SECRET
     trakt.core.OAUTH_TOKEN = trakt_access_token
 
-    start_date = (
-        (
-            (datetime.datetime.now() - datetime.timedelta(days=days_ago)).strftime(
-                "%Y-%m-%d"
-            )
-        )
-        if days_ago
-        else (datetime.datetime.now() - datetime.timedelta(days=30)).strftime(
-            "%Y-%m-%d"
-        )
-    )
-
-    print(start_date)
-    episodes = MyShowCalendar(
-        days=period if period else 365,
-        extended="full",
-        date=start_date,
-    )
-
+    try:
+        episodes = get_episodes_batch(days_ago, period)
+    except ValueError as e:
+        return {"error": str(e)}, 400
     json = []
+
     for episode in episodes:
         json.append(
             {
@@ -140,8 +178,11 @@ def get_calendar_preview():
                 "title": episode.title,
                 "overview": episode.overview,
                 "airs_at": episode.airs_at,
+                "airs_at_unix": episode.airs_at.timestamp(),
+                "runtime": episode.show_data.runtime,
             }
         )
+    json = sorted(json, key=lambda k: k["airs_at_unix"])
     return json
 
 
@@ -149,6 +190,7 @@ def get_token(key: str):
     """
     Returns the token for the user with the given key
     """
+    key = re.sub(r"[^a-zA-Z0-9]", "", key)
     user_token = col.find_one({"user_id": key})["token"]
     user_token = decrypt(user_token)
     if (
@@ -225,8 +267,8 @@ def callback():
     return redirect(url_for("complete", key=key))
 
 
-@app.route("/complete")
 @cache.cached(timeout=3600, query_string=True)
+@app.route("/complete")
 def complete():
     """
     This page is shown after the user has been authenticated
@@ -236,68 +278,7 @@ def complete():
         return redirect(url_for("authorize"))
     trakt_access_token = get_token(key)["access_token"]
     username = get_user_info(trakt_access_token)["user"]["username"]
-
-    page = f"""
-    <html>
-    <head>
-    <title>Trakt ical</title>
-    <style>
-    table, th, td {{
-        border: 1px solid;
-    }}
-
-    th, td{{
-        padding: 5px
-    }}
-    </style>
-    </head>
-    <body>
-    <h1 style="margin-bottom: 5px;">Trakt ICal Feed</h1>
-    <a href="https://github.com/radityaharya/trakt_ical" target="_blank" style="text-decoration: none; color: blue;">Github</a>
-    <br>
-    <p>Authenticated as <strong>{username}</strong></p>
-    <div>
-        <label for="days_from">Days Ago:</label>
-        <input type="number" id="days_ago" value="1" onchange="actions()">
-        <label for="days">Days Ahead:</label>
-        <input type="number" id="days" value="32" max="365" min="30" onchange="actions()">
-        <button onclick="actions()">Update url</button>
-    </div>
-    <p style="font-size: 12px;" id="estimated_time"></p>
-    <p style="font-size: 12px;">Note: The current maximum time span that can be fetched is 33 days</p>
-    <p>Now you can use the following link to get your ical file:</p>
-    <p id="url"><a href="{url_for('index')}?key={key}">{url_for('index')}?key={key}</a></p>
-    <button onclick="copyUrl()">Copy url</button>
-    <button onclick="addGoogle()">Add to Google Calendar</button>
-    <button onclick="addOutlook365()">Add to Outlook 365</button>
-    <button onclick="addOutlookLive()">Add to Outlook Live</button>
-    <h2>Add to Google Calendar</h2>
-    <p>1. Go to <a target="_blank"href="https://calendar.google.com/calendar/r/settings/addbyurl">https://calendar.google.com/calendar/r/settings/addbyurl</a></p>
-    <p>2. Paste the following link into the field and click "Add calendar"</p>
-    <p> or click the following button to add the calendar directly to your Google Calendar</p>
-    
-    <button onclick="addGoogle()">Add to Google Calendar</button>
-    
-    <h2>Add to Outlook</h2>
-    <p>1. Go to <a target="_blank" href="https://outlook.live.com/calendar/0/subscriptions">https://outlook.live.com/calendar/0/subscriptions</a></p>
-    <p>2. Paste the following link into the field and click "Add"</p>
-    
-    <p> or click the following button to add the calendar directly to your Outlook</p>
-    
-    <button onclick="addOutlook365()">Add to Outlook 365</button>
-    <button onclick="addOutlookLive()">Add to Outlook Live</button>
-    
-    <p>Preview:</p>
-    <div id="preview"></div>
-    <noscript>
-        <p style="color: red;">Javascript is required to render the preview table</p>
-    </noscript>
-    
-    </body>
-    <script type="text/javascript" src="/static/js/script.js"></script>
-    </html>
-    """
-    return page
+    return render_template("complete.jinja2", username=username, key=key)
 
 
 @cache.cached(timeout=3600, query_string=["key", "days_ago", "period"])
@@ -328,17 +309,19 @@ def index():
     """
     period = int(period) if period else None
 
-    try:
-        col.find_one({"user_id": key})
-    except Exception:
+    user = col.find_one({"user_id": key})
+    if not user:
         return redirect(url_for("authorize"))
     trakt_access_token = get_token(key)
 
-    calendar = get_calendar(
-        trakt_access_token=trakt_access_token["access_token"],
-        days_ago=days_ago,
-        period=period,
-    )
+    try:
+        calendar = get_calendar(
+            trakt_access_token=trakt_access_token["access_token"],
+            days_ago=days_ago,
+            period=period,
+        )
+    except ValueError as e:
+        return {"error": str(e)}, 400
 
     with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
         temp_file.write(calendar)
@@ -349,7 +332,7 @@ def index():
 
     response = Response(open(path, "rb"), mimetype="text/calendar")
     response.headers["Cache-Control"] = "max-age=3600"
-    response.headers["Content-Disposition"] = f"attachment; filename=trakt-calendar.ics"
+    response.headers["Content-Disposition"] = "attachment; filename=trakt-calendar.ics"
     return response
 
 

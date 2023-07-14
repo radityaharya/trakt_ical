@@ -170,6 +170,7 @@ async function renderPreviewTable(){
           <th>Title</th>
           <th>Overview</th>
           <th>Air date</th>
+          <th>Runtime (min)</th>
       </tr>
   `;
   
@@ -186,6 +187,7 @@ async function renderPreviewTable(){
           <td>${item.title}</td>
           <td>${item.overview}</td>
           <td>${item.airs_at}</td>
+          <td>${item.runtime}</td>
       </tr>
   `).join("");
 }
