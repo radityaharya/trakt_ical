@@ -1,4 +1,7 @@
-import concurrent.futures
+"""
+This file contains the code for the Flask app that serves the iCal file.
+"""
+
 import datetime
 import os
 import re
@@ -6,15 +9,13 @@ import tempfile
 
 import pymongo
 import requests
-import trakt
-import trakt.core
 from cryptography.fernet import Fernet
 from dotenv import load_dotenv
-from flask import Flask, Response, redirect, request, url_for, render_template
+from flask import Flask, Response, abort, redirect, request, url_for, render_template
 from flask_caching import Cache
-from icalendar import Calendar, Event
-from trakt.calendar import MyShowCalendar
 from util import decrypt, encrypt
+
+from trakt_api import TraktAPI
 
 col = pymongo.MongoClient(os.environ.get("MONGO_URL")).trakt_ical.users
 
@@ -32,158 +33,6 @@ CLIENT_SECRET = os.environ.get("TRAKT_CLIENT_SECRET")
 
 MAX_DAYS_AGO = 30
 MAX_PERIOD = 90
-
-
-def get_episodes_batch(days_ago, period):
-    """
-    Returns the episodes for the given start date and days
-    """
-    episodes = []
-    if days_ago > MAX_DAYS_AGO or period > MAX_PERIOD:
-        raise ValueError(
-            f"days_ago must be less than {MAX_DAYS_AGO} and period must be less than {MAX_PERIOD}"
-        )
-
-    def get_episodes(start_date, days):
-        print(start_date, days)
-        return MyShowCalendar(
-            days=days,
-            extended="full",
-            date=start_date,
-        )
-
-    start_date = (datetime.datetime.now() - datetime.timedelta(days=days_ago)).strftime(
-        "%Y-%m-%d"
-    )
-    end_date = (datetime.datetime.now() + datetime.timedelta(days=period)).strftime(
-        "%Y-%m-%d"
-    )
-
-    if (
-        datetime.datetime.strptime(end_date, "%Y-%m-%d")
-        - datetime.datetime.strptime(start_date, "%Y-%m-%d")
-    ).days < 33:
-        episodes = get_episodes(start_date, period)
-    else:
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            futures = []
-            batch_start_date = start_date
-            while (
-                datetime.datetime.strptime(end_date, "%Y-%m-%d")
-                - datetime.datetime.strptime(batch_start_date, "%Y-%m-%d")
-            ).days > 33:
-                futures.append(executor.submit(get_episodes, batch_start_date, 33))
-                batch_start_date = (
-                    datetime.datetime.strptime(batch_start_date, "%Y-%m-%d")
-                    + datetime.timedelta(days=33)
-                ).strftime("%Y-%m-%d")
-            futures.append(
-                executor.submit(
-                    get_episodes,
-                    batch_start_date,
-                    (
-                        datetime.datetime.strptime(end_date, "%Y-%m-%d")
-                        - datetime.datetime.strptime(batch_start_date, "%Y-%m-%d")
-                    ).days,
-                )
-            )
-            for future in concurrent.futures.as_completed(futures):
-                episodes += future.result()
-    return episodes
-
-
-def get_calendar(
-    trakt_access_token: str = None,
-    days_ago: int = 30,
-    period: int = 30,
-):
-    """
-    Returns the calendar in iCal format for the next 365 days encoded in utf-8
-
-    Returns:
-        str: iCal calendar
-        days_ago (int): days ago to start the calendar. Defaults to None.
-        period (int, optional): The number of days to include in the calendar. Defaults to 365.
-    """
-    trakt.core.CLIENT_ID = CLIENT_ID
-    trakt.core.CLIENT_SECRET = CLIENT_SECRET
-    trakt.core.OAUTH_TOKEN = trakt_access_token
-
-    days_ago = int(days_ago) if days_ago else 30
-    period = int(period) if period else 90
-
-    episodes = get_episodes_batch(days_ago, period)
-
-    cal = Calendar()
-    cal.add("prodid", "-//Trakt//trakt_ical//EN")
-    cal.add("version", f"{datetime.datetime.now().strftime('%Y%m%d %H:%M')}")
-
-    for episode in episodes:
-        summary = f"{episode.show} S{episode.season:02d}E{episode.number:02d}"
-        event = Event()
-        event.add("summary", summary)
-        event.add("dtstart", episode.airs_at)
-        event.add(
-            "dtend",
-            episode.airs_at + datetime.timedelta(minutes=episode.show_data.runtime),
-        )
-        event.add("dtstamp", datetime.datetime.now())
-        event.add("uid", f"{episode.show}-{episode.season}-{episode.number}")
-        overview = episode.overview
-        if overview:
-            event.add("description", episode.title + "\n" + overview)
-        else:
-            event.add("description", episode.title)
-        cal.add_component(event)
-    return cal.to_ical().decode("utf-8")
-
-
-@cache.cached(timeout=3600, query_string=["key", "days_ago", "period"])
-@app.route("/preview")
-def get_calendar_preview():
-    """
-    Returns the calendar in iCal format for the next 365 days encoded in utf-8
-
-    Returns:
-        str: iCal calendar
-        start_date (datetime.datetime, optional): The start date of the calendar. Defaults to None.
-        period (int, optional): The number of days to include in the calendar. Defaults to 365.
-    """
-    key = request.args.get("key")
-    days_ago = request.args.get("days_ago")
-    period = request.args.get("period")
-
-    days_ago = int(days_ago) if days_ago else 30
-    period = int(period) if period else 90
-
-    if not key:
-        return "No key provided", 400
-    trakt_access_token = get_token(key)["access_token"]
-    trakt.core.CLIENT_ID = CLIENT_ID
-    trakt.core.CLIENT_SECRET = CLIENT_SECRET
-    trakt.core.OAUTH_TOKEN = trakt_access_token
-
-    try:
-        episodes = get_episodes_batch(days_ago, period)
-    except ValueError as e:
-        return {"error": str(e)}, 400
-    json = []
-
-    for episode in episodes:
-        json.append(
-            {
-                "show": episode.show,
-                "season": episode.season,
-                "number": episode.number,
-                "title": episode.title,
-                "overview": episode.overview,
-                "airs_at": episode.airs_at,
-                "airs_at_unix": episode.airs_at.timestamp(),
-                "runtime": episode.show_data.runtime,
-            }
-        )
-    json = sorted(json, key=lambda k: k["airs_at_unix"])
-    return json
 
 
 def get_token(key: str):
@@ -268,7 +117,7 @@ def callback():
 
 
 @cache.cached(timeout=3600, query_string=True)
-@app.route("/complete")
+@app.route("/")
 def complete():
     """
     This page is shown after the user has been authenticated
@@ -282,19 +131,29 @@ def complete():
 
 
 @cache.cached(timeout=3600, query_string=["key", "days_ago", "period"])
-@app.route("/")
-def index():
+@app.route("/<calendar_type>")
+def calendar_ical(calendar_type):
     """
-    Returns ical file if key is provided, otherwise redirects to /auth
+    Returns iCal file if key is provided, otherwise redirects to /auth.
+
+    Args:
+        calendar_type (str): Type of calendar (shows/movies).
+
+    Returns:
+        Response: iCal file response.
     """
     key = request.args.get("key")
     days_ago = request.args.get("days_ago")
     period = request.args.get("period")
+
+    if calendar_type not in ["shows", "movies"]:
+        return abort(404)
+
     if not key:
         return """
         <html>
         <head>
-        <title>Trakt ical</title>
+        <title>Trakt iCal</title>
         <script>
         function redirect() {
             setTimeout(function(){ window.location.href = "/auth"; }, 5000);
@@ -306,7 +165,8 @@ def index():
         No key provided, redirecting to <a href="/auth">/auth</a> in 5 seconds
         </body>
         </html>
-    """
+        """
+
     period = int(period) if period else 90
 
     user = col.find_one({"user_id": key})
@@ -314,14 +174,24 @@ def index():
         return redirect(url_for("authorize"))
     trakt_access_token = get_token(key)
 
+    trakt_api = TraktAPI(trakt_access_token["access_token"])
     try:
-        calendar = get_calendar(
-            trakt_access_token=trakt_access_token["access_token"],
-            days_ago=days_ago,
-            period=period,
-        )
-    except ValueError as e:
-        return {"error": str(e)}, 400
+        if calendar_type == "shows":
+            calendar = trakt_api.get_shows_calendar(
+                days_ago=days_ago,
+                period=period,
+            )
+            filename = "trakt-calendar-shows.ics"
+        elif calendar_type == "movies":
+            calendar = trakt_api.get_movies_calendar(
+                days_ago=days_ago,
+                period=period,
+            )
+            filename = "trakt-calendar-movies.ics"
+        else:
+            return "Invalid calendar type", 400
+    except ValueError as message:
+        return {"error": str(message)}, 400
 
     with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
         temp_file.write(calendar)
@@ -332,8 +202,86 @@ def index():
 
     response = Response(open(path, "rb"), mimetype="text/calendar")
     response.headers["Cache-Control"] = "max-age=3600"
-    response.headers["Content-Disposition"] = "attachment; filename=trakt-calendar.ics"
+    response.headers["Content-Disposition"] = f"attachment; filename={filename}"
     return response
+
+
+@cache.cached(timeout=3600, query_string=["key", "days_ago", "period"])
+@app.route("/<calendar_type>/json")
+def get_calendar_preview(calendar_type):
+    """
+    Returns the calendar in JSON format
+
+    Args:
+        calendar_type (str): Type of calendar (shows/movies).
+
+    Returns:
+        list: List of calendar entries in JSON format.
+    """
+    key = request.args.get("key")
+    days_ago = request.args.get("days_ago")
+    period = request.args.get("period")
+
+    if calendar_type not in ["shows", "movies"]:
+        return abort(404)
+
+    days_ago = int(days_ago) if days_ago else 30
+    period = int(period) if period else 90
+
+    if not key:
+        return "No key provided", 400
+    trakt_access_token = get_token(key)["access_token"]
+
+    trakt_api = TraktAPI(trakt_access_token)
+
+    if calendar_type == "shows":
+        try:
+            entries = trakt_api.get_shows_batch(days_ago, period)
+        except ValueError as message:
+            return {"error": str(message)}, 400
+    elif calendar_type == "movies":
+        try:
+            entries = trakt_api.get_movies_batch(days_ago, period)
+        except ValueError as message:
+            return {"error": str(message)}, 400
+    else:
+        return "Invalid calendar type", 400
+
+    json = []
+
+    for entry in entries:
+        if calendar_type == "shows":
+            json.append(
+                {
+                    "show": entry.show,
+                    "season": entry.season,
+                    "number": entry.number,
+                    "title": entry.title,
+                    "overview": entry.overview,
+                    "airs_at": entry.airs_at,
+                    "airs_at_unix": entry.airs_at.timestamp(),
+                    "runtime": entry.show_data.runtime,
+                }
+            )
+        elif calendar_type == "movies":
+            json.append(
+                {
+                    "title": entry.title,
+                    "overview": entry.overview,
+                    "released": entry.released,
+                    "released_unix": datetime.datetime.strptime(
+                        entry.released, "%Y-%m-%d"
+                    ).timestamp(),
+                    "runtime": entry.runtime,
+                }
+            )
+
+    if calendar_type == "shows":
+        json = sorted(json, key=lambda k: k["airs_at_unix"])
+    elif calendar_type == "movies":
+        json = sorted(json, key=lambda k: k["released_unix"])
+
+    return json
 
 
 def serve(host: str = "0.0.0.0", port: int = 8000, debug: bool = False):
@@ -347,7 +295,7 @@ def serve(host: str = "0.0.0.0", port: int = 8000, debug: bool = False):
     if "SECRET_KEY" not in os.environ:
         key = Fernet.generate_key()
         os.environ["SECRET_KEY"] = key.decode("utf-8")
-        with open(".env", "a", encoding="utf-8") as f:
-            f.write(f"\nSECRET_KEY={key.decode('utf-8')}")
+        with open(".env", "a", encoding="utf-8") as file:
+            file.write(f"\nSECRET_KEY={key.decode('utf-8')}")
     app.secret_key = os.environ["SECRET_KEY"]
     app.run(host=host, port=port, debug=debug)

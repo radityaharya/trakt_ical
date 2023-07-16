@@ -51,6 +51,15 @@
       border-radius: 4px;
     }
 
+    select {
+      width: 100px;
+      font-size: 16px;
+      padding: 5px;
+      margin-right: 10px;
+      border: 1px solid #3e3e3e;
+      border-radius: 4px;
+    }
+
     button {
       font-size: 16px;
       padding: 5px 10px;
@@ -104,6 +113,11 @@
       <input type="number" id="days_ago" value="30" max="30" onchange="actions()">
       <label for="days">Days Ahead:</label>
       <input type="number" id="days" value="90" max="90" min="0" onchange="actions()">
+      <label for="calendar_type">Calendar Type:</label>
+      <select id="calendar_type" onchange="actions()" value="shows">
+        <option value="shows">Shows</option>
+        <option value="movies">Movies</option>
+      </select>
       <button onclick="actions()">Update url</button>
     </div>
     <p style="font-size: 12px;" id="estimated_time"></p>
@@ -113,9 +127,10 @@
     <p>Now you can use the following link to get your ical file:</p>
     <p id="url"><a href="{{url}}">{{url}}</a></p>
     <button onclick="copyUrl()">Copy url</button>
-    <button onclick="addGoogle()">Add to Google Calendar</button>
-    <button onclick="addOutlook365()">Add to Outlook 365</button>
-    <button onclick="addOutlookLive()">Add to Outlook Live</button>
+    <button onclick="addCalendarProtocol('webcal')"> Webcal </button>
+    <button onclick="addCalendarProtocol('google')">Add to Google Calendar</button>
+    <button onclick="addCalendarProtocol('outlook365')">Add to Outlook 365</button>
+    <button onclick="addCalendarProtocol('outlooklive')">Add to Outlook Live</button>
     <h2>Add to Google Calendar</h2>
     <p>1. Go to <a target="_blank"
         href="https://calendar.google.com/calendar/r/settings/addbyurl">https://calendar.google.com/calendar/r/settings/addbyurl</a>
@@ -123,7 +138,7 @@
     <p>2. Paste the following link into the field and click "Add calendar"</p>
     <p> or click the following button to add the calendar directly to your Google Calendar</p>
 
-    <button onclick="addGoogle()">Add to Google Calendar</button>
+    <button onclick="addCalendarProtocol('google')">Add to Google Calendar</button>
 
     <h2>Add to Outlook</h2>
     <p>1. Go to <a target="_blank"
@@ -133,8 +148,8 @@
 
     <p> or click the following button to add the calendar directly to your Outlook</p>
 
-    <button onclick="addOutlook365()">Add to Outlook 365</button>
-    <button onclick="addOutlookLive()">Add to Outlook Live</button>
+    <button onclick="addCalendarProtocol('outlook365')">Add to Outlook 365</button>
+    <button onclick="addCalendarProtocol('outlooklive')">Add to Outlook Live</button>
 
     <p>Preview:</p>
     <div id="preview"></div>

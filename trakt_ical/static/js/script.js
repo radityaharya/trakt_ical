@@ -1,201 +1,165 @@
 const MAX_DAYS = 30;
 
-function editUrl() {
-  const url = window.location.href;
-  var base_url = url.substring(0, url.lastIndexOf("/"));
-  var key = url.substring(url.lastIndexOf("=") + 1);
-  
-  var days_ago = document.getElementById("days_ago").value;
-  var days = document.getElementById("days").value;
+function getCalendarType() {
+  return document.getElementById("calendar_type").value;
+}
 
-  var days_ago = parseInt(days_ago);
-  var days = parseInt(days);
-          
-  var newurl = new URL(base_url);
-  newurl = newurl.toString();
-  newurl = newurl.split("?")[0];
-  
-  var params = new URLSearchParams();
-  
+function getUrlParams() {
+  const url = window.location.href;
+  const base_url = url.substring(0, url.lastIndexOf("/"));
+  const key = url.substring(url.lastIndexOf("=") + 1);
+  const days_ago = parseInt(document.getElementById("days_ago").value);
+  const days = parseInt(document.getElementById("days").value);
+
+  const newurl = new URL(base_url);
+  const params = new URLSearchParams();
+
   params.append("key", key);
   params.append("days_ago", days_ago);
   params.append("period", days);
-  
-  const final_url = `${newurl}?${params.toString()}`;
-  
+
+  const final_url = `${newurl}${getCalendarType()}?${params.toString()}`;
+
+  return { final_url, key, days_ago, days };
+}
+
+function editUrl() {
+  const { final_url } = getUrlParams();
+
   document.getElementById("url").innerHTML = `<a href="${final_url}">${final_url}</a>`;
 }
 
-function estimate(){
-  var days_ago = document.getElementById("days_ago").value;
-  var days_ahead = document.getElementById("days").value;
-  
-  var days_ago = parseInt(days_ago);
-  var days_ahead = parseInt(days_ahead);
+function estimate() {
+  const { days_ago, days } = getUrlParams();
 
-  var today = new Date();
-  var today = today.getTime();
+  const today = new Date().getTime();
+  const days_ago_ms = days_ago * 86400000;
+  const days_ahead_ms = days * 86400000;
 
-  var days_ago = days_ago * 86400000;
-  var days_ahead = days_ahead * 86400000;
+  const start = new Date(today - days_ago_ms).toISOString().split("T")[0];
+  const end = new Date(today + days_ahead_ms).toISOString().split("T")[0];
 
-  var start = new Date(today - days_ago).toISOString().split("T")[0];
-  var end = new Date(today + days_ahead).toISOString().split("T")[0];
-
-  const total = (days_ago + days_ahead) / 86400000;
+  const total = (days_ago_ms + days_ahead_ms) / 86400000;
 
   const estimated = document.getElementById("estimated_time");
 
   estimated.innerHTML = `This will fetch data from ${start} to ${end} with a total of ${total} days.`;
 }
 
-function addGoogle() {
-  const url = window.location.href;
-  var base_url = url.substring(0, url.lastIndexOf("/"));
-  var key = url.substring(url.lastIndexOf("=") + 1);
-  
-  var days_ago = document.getElementById("days_ago").value;
-  var days = document.getElementById("days").value;
-          
-  var newurl = new URL(base_url);
-  newurl = newurl.toString();
-  newurl = newurl.split("?")[0];
-  
-  var params = new URLSearchParams();
-  
-  params.append("key", key);
-  params.append("days_ago", days_ago);
-  params.append("period", days);
-  
-  const final_url = `${newurl}?${params.toString()}`;
-  
-  var webcal_url = final_url.replace("https://", "webcal://");
-  
-  var gcalurl = "https://calendar.google.com/calendar/render?cid=" + encodeURIComponent(webcal_url);
-  
-  window.open(gcalurl, "_blank");
-}
+function addCalendarProtocol(protocol) {
+  const { final_url } = getUrlParams();
+  const webcal_url = final_url.replace("https://", "webcal://").replace("http://", "webcal://");
 
-function addOutlook365() {
-  const url = window.location.href;
-  var base_url = url.substring(0, url.lastIndexOf("/"));
-  var key = url.substring(url.lastIndexOf("=") + 1);
-  
-  var days_ago = document.getElementById("days_ago").value;
-  var days = document.getElementById("days").value;
-          
-  var newurl = new URL(base_url);
-  newurl = newurl.toString();
-  newurl = newurl.split("?")[0];
-  
-  var params = new URLSearchParams();
-  
-  params.append("key", key);
-  params.append("days_ago", days_ago);
-  params.append("period", days);
-  
-  const final_url = `${newurl}?${params.toString()}`;
+  let calendarUrl;
 
-  var webcal_url = final_url.replace("https://", "webcal://");
+  switch (protocol) {
+    case "webcal":
+      calendarUrl = webcal_url;
+      break;
+    case "google":
+      calendarUrl = `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(webcal_url)}`;
+      break;
+    case "outlook365":
+      calendarUrl = `https://outlook.office.com/owa?path=%2Fcalendar%2Faction%2Fcompose&rru=addsubscription&url=${encodeURIComponent(webcal_url)}&name=Trakt%20iCal`;
+      break;
+    case "outlooklive":
+      calendarUrl = `https://outlook.live.com/owa?path=%2Fcalendar%2Faction%2Fcompose&rru=addsubscription&url=${encodeURIComponent(webcal_url)}&name=Trakt%20iCal`;
+      break;
+  }
 
-  var outlook365url = "https://outlook.office.com/owa?path=%2Fcalendar%2Faction%2Fcompose&rru=addsubscription&url=" + encodeURIComponent(webcal_url) + "&name=Trakt%20iCal";
-
-  window.open(outlook365url, "_blank");
-}
-
-function addOutlookLive() {
-  const url = window.location.href;
-  var base_url = url.substring(0, url.lastIndexOf("/"));
-  var key = url.substring(url.lastIndexOf("=") + 1);
-  
-  var days_ago = document.getElementById("days_ago").value;
-  var days = document.getElementById("days").value;
-          
-  var newurl = new URL(base_url);
-  newurl = newurl.toString();
-  newurl = newurl.split("?")[0];
-  
-  var params = new URLSearchParams();
-  
-  params.append("key", key);
-  params.append("days_ago", days_ago);
-  params.append("period", days);
-  
-  const final_url = `${newurl}?${params.toString()}`;
-
-  var webcal_url = final_url.replace("https://", "webcal://");
-
-  var outlookliveurl = "https://outlook.live.com/owa?path=%2Fcalendar%2Faction%2Fcompose&rru=addsubscription&url=" + encodeURIComponent(webcal_url) + "&name=Trakt%20iCal";
-
-  window.open(outlookliveurl, "_blank");
+  window.open(calendarUrl, "_blank");
 }
 
 function copyUrl() {
-  var url = document.getElementById("url").innerText;
+  const url = document.getElementById("url").innerText;
   navigator.clipboard.writeText(url);
 }
 
-async function renderPreviewTable(){
-  var table = document.getElementById("preview");
+async function fetchPreviewData() {
+  const { final_url, key, days_ago, days } = getUrlParams();
+
+  var base_url = final_url.substring(0, final_url.lastIndexOf("?"));
+  var json_url = `${base_url}/json?${final_url.substring(final_url.lastIndexOf("?") + 1)}`;
   
-  const url = window.location.href;
-  var base_url = url.substring(0, url.lastIndexOf("/"));
-  var key = url.substring(url.lastIndexOf("=") + 1);
+  json_url += `&key=${key}&days_ago=${days_ago}&period=${days}`;
   
-  var days_ago = document.getElementById("days_ago").value;
-  var days = document.getElementById("days").value;
-          
-  var newurl = new URL(base_url);
-  newurl = newurl.toString();
-  newurl = newurl.split("?")[0];
-  
-  var params = new URLSearchParams();
-  
-  params.append("key", key);
-  params.append("days_ago", days_ago);
-  params.append("period", days);
-  
-  const final_url = `${newurl}preview?${params.toString()}`;
-  
-  table.innerHTML = "";
-  
-  tablehead = table.appendChild(document.createElement("thead"));
-  tablebody = table.appendChild(document.createElement("tbody"));
-  
-  tablehead.innerHTML = `
-      <tr>
-          <th>Show</th>
-          <th>Season</th>
-          <th>Episode</th>
-          <th>Title</th>
-          <th>Overview</th>
-          <th>Air date</th>
-          <th>Runtime (min)</th>
-      </tr>
-  `;
-  
-  const response = await fetch(final_url);
+  const response = await fetch(json_url);
   const data = await response.json();
-  
-  console.log(data);
-  
-  tablebody.innerHTML = data.map(item => `
-      <tr>
-          <td>${item.show}</td>
-          <td>${item.season}</td>
-          <td>${item.number}</td>
-          <td>${item.title}</td>
-          <td>${item.overview}</td>
-          <td>${item.airs_at}</td>
-          <td>${item.runtime}</td>
-      </tr>
-  `).join("");
+  return data;
 }
 
-function actions(){
+async function renderPreviewTable() {
+  const table = document.getElementById("preview");
+
+  table.innerHTML = "";
+  const tablehead = table.appendChild(document.createElement("thead"));
+  const tablebody = table.appendChild(document.createElement("tbody"));
+
+  switch (getCalendarType()) {
+    case "shows":
+      tablehead.innerHTML = `
+        <tr>
+            <th>Show</th>
+            <th>Season</th>
+            <th>Episode</th>
+            <th>Title</th>
+            <th>Overview</th>
+            <th>Airs At</th>
+            <th>Runtime (min)</th>
+        </tr>
+      `;
+
+      const data = await fetchPreviewData();
+
+      console.log(data);
+
+      tablebody.innerHTML = data.map(
+        (item) => `
+          <tr>
+              <td>${item.show}</td>
+              <td>${item.season}</td>
+              <td>${item.number}</td>
+              <td>${item.title}</td>
+              <td>${item.overview}</td>
+              <td>${new Date(item.airs_at).toLocaleString()}</td>
+              <td>${item.runtime}</td>
+          </tr>
+      `
+      ).join("");
+      break;
+
+    case "movies":
+      tablehead.innerHTML = `
+        <tr>
+            <th>Movie</th>
+            <th>Overview</th>
+            <th>Released</th>
+            <th>Runtime (min)</th>
+        </tr>
+      `;
+
+      const data2 = await fetchPreviewData();
+
+      console.log(data2);
+
+      tablebody.innerHTML = data2.map(
+        (item) => `
+          <tr>
+              <td>${item.title}</td>
+              <td>${item.overview}</td>
+              <td>${new Date(item.released).toLocaleString()}</td>
+              <td>${item.runtime}</td>
+          </tr>
+      `
+      ).join("");
+      break;
+  }
+}
+
+function actions() {
   editUrl();
   estimate();
-  renderPreviewTable()
+  renderPreviewTable();
 }
 
 actions();
