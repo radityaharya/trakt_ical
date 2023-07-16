@@ -4,5 +4,5 @@ flask_caching
 icalendar
 python-dotenv
 requests
-trakt
+pytrakt @ git+https://github.com/radityaharya/python-pytrakt.git@main
 pymongo[srv]
