@@ -57,11 +57,11 @@ export const Main = ({ ...props }: IFrame1Props): JSX.Element => {
   function addCalendarProtocol(
     protocol: "webcal" | "google" | "outlook365" | "outlooklive",
   ) {
-    const final_url = calendarUrl.replace("http://", "https://");
-    const webcal_url = final_url
-      .replace("https://", "webcal://")
-      .replace("http://", "webcal://")
-      .replace("json/", "");
+    const webcal_url = `${base_url}${calendarType}?key=${key}&days_ago=${daysAgo}&period=${daysAhead}`.replace(
+      "https://", "webcal://"
+    ).replace(
+      "http://", "webcal://"
+    );
 
     let addCalendarUrl = "";
 
@@ -90,7 +90,7 @@ export const Main = ({ ...props }: IFrame1Props): JSX.Element => {
   }
 
   React.useEffect(() => {
-    const url = `${base_url}/${calendarType}/json?key=${key}&days_ago=${daysAgo}&period=${daysAhead}`;
+    const url = `${base_url}${calendarType}/json?key=${key}&days_ago=${daysAgo}&period=${daysAhead}`;
     setCalendarUrl(url);
   }, [calendarType, daysAgo, daysAhead]);
 
