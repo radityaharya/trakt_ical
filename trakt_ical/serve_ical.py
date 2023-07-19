@@ -123,7 +123,7 @@ def callback():
         )
     else:
         key = col.find_one({"user_slug": user_slug})["user_id"]
-    return redirect(url_for("complete", key=key))
+    return redirect(url_for("index") + f"?key={key}")
 
 
 @app.route("/")
