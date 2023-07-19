@@ -11,7 +11,17 @@ import pymongo
 import requests
 from cryptography.fernet import Fernet
 from dotenv import load_dotenv
-from flask import Flask, Response, abort, redirect, request, url_for, render_template
+from flask import (
+    Flask,
+    Response,
+    abort,
+    jsonify,
+    redirect,
+    request,
+    send_from_directory,
+    url_for,
+)
+
 from flask_caching import Cache
 from util import decrypt, encrypt
 
@@ -20,7 +30,7 @@ from trakt_api import TraktAPI
 col = pymongo.MongoClient(os.environ.get("MONGO_URL")).trakt_ical.users
 
 config = {"DEBUG": False, "CACHE_TYPE": "SimpleCache", "CACHE_DEFAULT_TIMEOUT": 3600}
-app = Flask(__name__)
+app = Flask(__name__, static_folder="frontend/dist")
 app.config.from_mapping(config)
 cache = Cache(app)
 
@@ -116,18 +126,15 @@ def callback():
     return redirect(url_for("complete", key=key))
 
 
-@cache.cached(timeout=3600, query_string=True)
 @app.route("/")
-def complete():
+def index():
     """
     This page is shown after the user has been authenticated
     """
     key = request.args.get("key")
     if not key:
         return redirect(url_for("authorize"))
-    trakt_access_token = get_token(key)["access_token"]
-    username = get_user_info(trakt_access_token)["user"]["username"]
-    return render_template("complete.jinja2", username=username, key=key)
+    return send_from_directory(app.static_folder, "index.html")
 
 
 @cache.cached(timeout=3600, query_string=["key", "days_ago", "period"])
@@ -210,13 +217,7 @@ def calendar_ical(calendar_type):
 @app.route("/<calendar_type>/json")
 def get_calendar_preview(calendar_type):
     """
-    Returns the calendar in JSON format
-
-    Args:
-        calendar_type (str): Type of calendar (shows/movies).
-
-    Returns:
-        list: List of calendar entries in JSON format.
+    Returns a JSON response with the calendar preview.
     """
     key = request.args.get("key")
     days_ago = request.args.get("days_ago")
@@ -247,41 +248,98 @@ def get_calendar_preview(calendar_type):
     else:
         return "Invalid calendar type", 400
 
-    json = []
-
+    # Separate the entries by their respective dates
+    entries_by_date = {}
     for entry in entries:
         if calendar_type == "shows":
-            json.append(
-                {
-                    "show": entry.show,
-                    "season": entry.season,
-                    "number": entry.number,
-                    "title": entry.title,
-                    "overview": entry.overview,
-                    "airs_at": entry.airs_at,
-                    "airs_at_unix": entry.airs_at.timestamp(),
-                    "runtime": entry.show_data.runtime,
-                }
-            )
+            entry_data = {
+                "airs_at": entry.airs_at,
+                "airs_at_unix": entry.airs_at.timestamp(),
+                "number": entry.number,
+                "overview": entry.overview,
+                "runtime": entry.runtime,
+                "season": entry.season,
+                "show": entry.show,
+                "title": entry.title,
+            }
         elif calendar_type == "movies":
-            json.append(
-                {
-                    "title": entry.title,
-                    "overview": entry.overview,
-                    "released": entry.released,
-                    "released_unix": datetime.datetime.strptime(
-                        entry.released, "%Y-%m-%d"
-                    ).timestamp(),
-                    "runtime": entry.runtime,
-                }
-            )
+            entry_data = {
+                "title": entry.title,
+                "overview": entry.overview,
+                "released": entry.released,
+                "released_unix": datetime.datetime.strptime(
+                    entry.released, "%Y-%m-%d"
+                ).timestamp(),
+                "runtime": entry.runtime,
+            }
 
-    if calendar_type == "shows":
-        json = sorted(json, key=lambda k: k["airs_at_unix"])
-    elif calendar_type == "movies":
-        json = sorted(json, key=lambda k: k["released_unix"])
+        date_unix = (
+            entry_data.get("airs_at_unix")
+            if calendar_type == "shows"
+            else entry_data.get("released_unix")
+        )
 
-    return json
+        date_unix = date_unix - (date_unix % 86400)
+
+        date_str = datetime.datetime.utcfromtimestamp(date_unix).strftime(
+            "%a, %d %b %Y %H:%M:%S GMT"
+        )
+
+        if date_unix not in entries_by_date:
+            entries_by_date[date_unix] = {
+                "date_unix": date_unix,
+                "date_str": date_str,
+                "items": [],
+            }
+
+        entries_by_date[date_unix]["items"].append(entry_data)
+
+    # Sort the entries by their respective dates
+    sorted_entries = sorted(entries_by_date.values(), key=lambda k: k["date_unix"])
+
+    # Prepare the final response
+    response_data = {
+        "type": calendar_type,
+        "data": sorted_entries,
+    }
+
+    response = jsonify(response_data)
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    return response
+
+
+@app.route("/ical/<slug>/<type>")
+def get_calendar(slug, calendar_type):
+    """
+    Shortcut to get a calendar by slug
+    """
+    user = col.find_one({"user_slug": slug})
+    if not user:
+        return abort(404)
+    else:
+        redirect_url = f"{url_for('calendar_ical', calendar_type=calendar_type)}?key={user['user_id']}"
+        return redirect(redirect_url)
+
+
+@app.route("/api/user/<user_id>")
+def get_user(user_id):
+    if not user_id:
+        return "No user ID provided", 400
+    user = col.find_one({"user_id": user_id})
+    if not user:
+        return abort(404)
+    else:
+        trakt_access_token = get_token(user_id)["access_token"]
+        username = get_user_info(trakt_access_token)["user"]["username"]
+        return jsonify({"username": username, "slug": user["user_slug"]})
+
+
+@app.route("/assets/<path:path>")
+def send_assets(path):
+    path = path.replace("../", "")
+    path = path.replace("./", "")
+    path = path.replace("//", "/")
+    return send_from_directory(app.static_folder, f"assets/{path}")
 
 
 def serve(host: str = "0.0.0.0", port: int = 8000, debug: bool = False):

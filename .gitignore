@@ -5,3 +5,4 @@ __pycache__/
 .vscode/
 trakt_config.json
 data/
+**/node_modules/**
