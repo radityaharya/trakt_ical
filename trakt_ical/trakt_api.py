@@ -173,6 +173,8 @@ class TraktAPI:
         cal.add("version", f"{datetime.datetime.now().strftime('%Y%m%d %H:%M')}")
 
         for episode in episodes:
+            if episode.runtime is None or episode.runtime == 0:
+                episode.runtime = 30
             show_ids = episode.show_data.__dict__.get("_ids")
             show_detail = self.tmdb.get_show(show_ids.get("tmdb"))
             summary = f"{episode.show} - S{episode.season:02d}E{episode.number:02d}"

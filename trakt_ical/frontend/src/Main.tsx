@@ -26,6 +26,9 @@ export const Main = ({ ...props }: IFrame1Props): JSX.Element => {
   const [calendarData, setCalendarData] = React.useState(
     null as ShowsResponse | MoviesResponse | null,
   );
+  const [isDataLoading, setIsDataLoading] = React.useState(
+    false
+  )
   const [calendarType, setCalendarType] = React.useState<"shows" | "movies">(
     "shows",
   );
@@ -39,10 +42,12 @@ export const Main = ({ ...props }: IFrame1Props): JSX.Element => {
 
   const debouncedFetch = useRef(
     debounce((url: string) => {
+      setIsDataLoading(true)
       fetch(url)
         .then((response) => response.json())
         .then((data) => {
           setCalendarData(data as ShowsResponse | MoviesResponse);
+          setIsDataLoading(false)
         });
     }, 500),
   ).current;
@@ -226,7 +231,7 @@ export const Main = ({ ...props }: IFrame1Props): JSX.Element => {
         className="flex flex-col gap-0 items-start justify-start self-stretch flex-1 relative"
         style={{ overflowY: "auto" }}
       >
-        {calendarData ? (
+        {calendarData && isDataLoading === false ? (
           calendarData.data.map((item: ShowData | MovieData) => {
             return (
               <DayPreviewStatusDefault data={item} type_of={calendarType} />
