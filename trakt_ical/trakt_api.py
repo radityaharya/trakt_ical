@@ -10,7 +10,7 @@ import trakt
 import trakt.core
 from icalendar import Calendar, Event
 from trakt.calendar import MyMovieCalendar, MyShowCalendar
-
+from tmdb_api import TMDB
 
 APPLICATION_ID = os.environ.get("TRAKT_APPLICATION_ID")
 CLIENT_ID = os.environ.get("TRAKT_CLIENT_ID")
@@ -33,6 +33,7 @@ class TraktAPI:
         trakt.core.CLIENT_SECRET = self.client_secret
         if oauth_token:
             trakt.core.OAUTH_TOKEN = oauth_token
+        self.tmdb = TMDB()
 
     def get_shows_batch(self, days_ago: int, period: int):
         """
@@ -172,6 +173,8 @@ class TraktAPI:
         cal.add("version", f"{datetime.datetime.now().strftime('%Y%m%d %H:%M')}")
 
         for episode in episodes:
+            show_ids = episode.show_data.__dict__.get("_ids")
+            show_detail = self.tmdb.get_show(show_ids.get("tmdb"))
             summary = f"{episode.show} - S{episode.season:02d}E{episode.number:02d}"
             event = Event()
             event.add("summary", summary)
@@ -187,6 +190,8 @@ class TraktAPI:
                 event.add("description", episode.title + "\n" + overview)
             else:
                 event.add("description", episode.title)
+            if show_detail.get("networks")[0].get("name"):
+                event.add("location", show_detail.get("networks")[0].get("name"))
             cal.add_component(event)
         return cal.to_ical().decode("utf-8")
 
@@ -214,7 +219,8 @@ class TraktAPI:
         cal.add("version", f"{datetime.datetime.now().strftime('%Y%m%d %H:%M')}")
 
         for movie in movies:
-            summary = f"{movie.title}"
+            year = datetime.datetime.strptime(movie.released, "%Y-%m-%d").year
+            summary = f"{movie.title} ({year})"
             event = Event()
             event.add("summary", summary)
             event.add("dtstart", datetime.datetime.strptime(movie.released, "%Y-%m-%d"))
