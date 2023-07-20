@@ -13,9 +13,6 @@ export interface IPreviewItemProps {
 }
 
 export const PreviewItem = ({ ...props }: IPreviewItemProps): JSX.Element => {
-  // air_time
-  // if type === show use airs_at_unix else use released_unix
-
   const air_time =
     props.type_of === "shows"
       ? props.data?.airs_at_unix
@@ -29,6 +26,12 @@ export const PreviewItem = ({ ...props }: IPreviewItemProps): JSX.Element => {
         hour12: true,
       })
     : "Unknown";
+  
+  const info_pill = props.type_of === "shows" ? (
+    <Pill type_of="network" text={props.data?.network ?? "Unknown"} />
+  ) : (
+    <Pill type_of="network" text={new Date(air_time ?? 0 * 1000).getFullYear().toString()} />
+  );
 
   return (
     <div className="border-solid border-[#2a2a2a]/20 border-[0.5px] flex flex-col gap-0 items-center justify-end w-[350px] h-[200px] relative overflow-hidden">
@@ -49,7 +52,7 @@ export const PreviewItem = ({ ...props }: IPreviewItemProps): JSX.Element => {
         <div className="flex flex-col gap-[5px] items-start justify-end self-stretch shrink-0 relative">
           <div className="flex flex-row gap-[5px] items-end justify-start shrink-0 relative">
             <Pill type_of="time" text={air_time_str} />
-            <Pill type_of="network" text="network" />
+            {info_pill}
           </div>
 
           <div

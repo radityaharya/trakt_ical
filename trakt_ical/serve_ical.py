@@ -26,6 +26,7 @@ from flask_caching import Cache
 from util import decrypt, encrypt
 
 from trakt_api import TraktAPI
+from tmdb_api import TMDB
 
 col = pymongo.MongoClient(os.environ.get("MONGO_URL")).trakt_ical.users
 
@@ -34,6 +35,7 @@ app = Flask(__name__, static_folder="frontend/dist")
 app.config.from_mapping(config)
 cache = Cache(app)
 
+tmdb = TMDB()
 
 load_dotenv(override=True)
 
@@ -213,7 +215,7 @@ def calendar_ical(calendar_type):
     return response
 
 
-@cache.cached(timeout=3600, query_string=["key", "days_ago", "period"])
+@cache.cached(timeout=43200, query_string=["key", "days_ago", "period"])
 @app.route("/<calendar_type>/json")
 def get_calendar_preview(calendar_type):
     """
@@ -248,10 +250,25 @@ def get_calendar_preview(calendar_type):
     else:
         return "Invalid calendar type", 400
 
+    def get_backdrop(images):
+        try:
+            return f"https://image.tmdb.org/t/p/original{images.get('backdrops')[0].get('file_path')}"
+        except Exception:
+            return None
+
+    def get_logo(images):
+        try:
+            return f"https://image.tmdb.org/t/p/original{images.get('logos')[0].get('file_path')}"
+        except Exception:
+            return None
+
     # Separate the entries by their respective dates
     entries_by_date = {}
     for entry in entries:
         if calendar_type == "shows":
+            show_ids = entry.show_data.__dict__.get("_ids")
+            images = tmdb.get_show_images(show_ids.get("tmdb"))
+            show_detail = tmdb.get_show(show_ids.get("tmdb"))
             entry_data = {
                 "airs_at": entry.airs_at,
                 "airs_at_unix": entry.airs_at.timestamp(),
@@ -261,8 +278,15 @@ def get_calendar_preview(calendar_type):
                 "season": entry.season,
                 "show": entry.show,
                 "title": entry.title,
+                "background": get_backdrop(images),
+                "logo": get_logo(images),
+                "ids": show_ids,
+                "network": show_detail.get("networks")[0].get("name"),
             }
         elif calendar_type == "movies":
+            movie_ids = entry.__dict__.get("_ids")
+            images = tmdb.get_movie_images(movie_ids.get("tmdb"))
+
             entry_data = {
                 "title": entry.title,
                 "overview": entry.overview,
@@ -271,6 +295,9 @@ def get_calendar_preview(calendar_type):
                     entry.released, "%Y-%m-%d"
                 ).timestamp(),
                 "runtime": entry.runtime,
+                "background": get_backdrop(images),
+                "logo": get_logo(images),
+                "ids": movie_ids,
             }
 
         date_unix = (

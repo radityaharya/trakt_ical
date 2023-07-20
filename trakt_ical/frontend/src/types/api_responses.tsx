@@ -10,6 +10,7 @@ interface MovieItem {
   season?: number;
   number?: number;
   airs_at_unix?: number;
+  network?: string;
 }
 
 interface MovieData {
@@ -36,6 +37,7 @@ interface ShowItem {
   background?: string;
   logo?: string;
   released_unix?: number;
+  network?: string;
 }
 
 interface ShowData {

@@ -10,6 +10,7 @@ import type {
   ShowsResponse,
 } from "./types/api_responses";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Oval } from "react-loader-spinner";
 
 export interface IFrame1Props {}
 
@@ -25,11 +26,11 @@ export const Main = ({ ...props }: IFrame1Props): JSX.Element => {
   const [calendarData, setCalendarData] = React.useState(
     null as ShowsResponse | MoviesResponse | null,
   );
-  const [calendarType, setCalendarType] = React.useState<
-    "shows" | "movies"
-  >("shows");
-  const [daysAgo, setDaysAgo] = React.useState(30);
-  const [daysAhead, setDaysAhead] = React.useState(90);
+  const [calendarType, setCalendarType] = React.useState<"shows" | "movies">(
+    "shows",
+  );
+  const [daysAgo, setDaysAgo] = React.useState(2);
+  const [daysAhead, setDaysAhead] = React.useState(60);
   const [userinfo, setUserinfo] = React.useState({
     username: "",
     slug: "",
@@ -57,11 +58,10 @@ export const Main = ({ ...props }: IFrame1Props): JSX.Element => {
   function addCalendarProtocol(
     protocol: "webcal" | "google" | "outlook365" | "outlooklive",
   ) {
-    const webcal_url = `${base_url}${calendarType}?key=${key}&days_ago=${daysAgo}&period=${daysAhead}`.replace(
-      "https://", "webcal://"
-    ).replace(
-      "http://", "webcal://"
-    );
+    const webcal_url =
+      `${base_url}${calendarType}?key=${key}&days_ago=${daysAgo}&period=${daysAhead}`
+        .replace("https://", "webcal://")
+        .replace("http://", "webcal://");
 
     let addCalendarUrl = "";
 
@@ -220,17 +220,34 @@ export const Main = ({ ...props }: IFrame1Props): JSX.Element => {
               />
             </div>
           </div>
-          dsp
         </div>
       </div>
-
       <div
         className="flex flex-col gap-0 items-start justify-start self-stretch flex-1 relative"
         style={{ overflowY: "auto" }}
       >
-        {calendarData?.data.map((item: ShowData | MovieData) => {
-          return <DayPreviewStatusDefault data={item} type_of={calendarType} />;
-        })}
+        {calendarData ? (
+          calendarData.data.map((item: ShowData | MovieData) => {
+            return (
+              <DayPreviewStatusDefault data={item} type_of={calendarType} />
+            );
+          })
+        ) : (
+          <div className="flex items-center justify-center h-full w-full text-white">
+            <Oval
+              height={80}
+              width={80}
+              color="#ed1c24"
+              wrapperStyle={{}}
+              wrapperClass=""
+              visible={true}
+              ariaLabel="oval-loading"
+              secondaryColor="#F25D62"
+              strokeWidth={2}
+              strokeWidthSecondary={2}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
