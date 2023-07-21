@@ -6,6 +6,7 @@ import datetime
 import os
 import re
 import tempfile
+import logging
 
 import pymongo
 import requests
@@ -30,7 +31,14 @@ from tmdb_api import TMDB
 
 col = pymongo.MongoClient(os.environ.get("MONGO_URL")).trakt_ical.users
 
-config = {"DEBUG": False, "CACHE_TYPE": "SimpleCache", "CACHE_DEFAULT_TIMEOUT": 3600}
+logger = logging.getLogger(__name__)
+
+config = {
+    "DEBUG": False,
+    "CACHE_TYPE": "FileSystemCache",
+    "CACHE_DEFAULT_TIMEOUT": 3600,
+    "CACHE_DIR": "./cache",
+}
 app = Flask(__name__, static_folder="frontend/dist")
 app.config.from_mapping(config)
 cache = Cache(app)
@@ -58,9 +66,29 @@ def get_token(key: str):
         datetime.datetime.now().timestamp()
         < user_token["created_at"] + user_token["expires_in"]
     ):
-        print("Token is not expired")
+        logger.info(
+            {
+                "message": "Token is not expired",
+                "datetime": datetime.datetime.now().timestamp(),
+                "info": {
+                    "user_id": key,
+                    "created_at": user_token["created_at"],
+                    "expires_in": user_token["expires_in"],
+                },
+            }
+        )
         return user_token
-    print("Refreshing token")
+    logger.info(
+        {
+            "message": "Token is expired",
+            "datetime": datetime.datetime.now(),
+            "info": {
+                "user_id": key,
+                "created_at": user_token["created_at"],
+                "expires_in": user_token["expires_in"],
+            },
+        }
+    )
     data = {
         "refresh_token": user_token["refresh_token"],
         "client_id": CLIENT_ID,
@@ -187,8 +215,8 @@ def index():
     return send_from_directory(app.static_folder, "index.html")
 
 
-@cache.cached(timeout=3600, query_string=["key", "days_ago", "period"])
 @app.route("/<calendar_type>")
+@cache.cached(timeout=3600, query_string=["key", "days_ago", "period"])
 def calendar_ical(calendar_type):
     """
     Returns iCal file if key is provided, otherwise redirects to /auth.
@@ -202,7 +230,17 @@ def calendar_ical(calendar_type):
     key = request.args.get("key")
     days_ago = request.args.get("days_ago")
     period = request.args.get("period")
-
+    logger.info(
+        {
+            "path": request.path,
+            "info": {
+                "key": key,
+                "days_ago": days_ago,
+                "period": period,
+                "calendar_type": calendar_type,
+            },
+        }
+    )
     if calendar_type not in ["shows", "movies"]:
         return abort(404)
 
@@ -256,15 +294,15 @@ def calendar_ical(calendar_type):
         temp_file.close()
 
     path = os.path.join(os.path.dirname(__file__), temp_file.name)
-
-    response = Response(open(path, "rb"), mimetype="text/calendar")
+    string = open(path, "r", encoding="utf-8").read()
+    response = Response(string, mimetype="text/calendar")
     response.headers["Cache-Control"] = "max-age=3600"
     response.headers["Content-Disposition"] = f"attachment; filename={filename}"
     return response
 
 
-@cache.cached(timeout=43200, query_string=["key", "days_ago", "period"])
 @app.route("/<calendar_type>/json")
+@cache.cached(timeout=43200, query_string=["key", "days_ago", "period"])
 def get_calendar_preview(calendar_type):
     """
     Returns a JSON response with the calendar preview.
@@ -272,6 +310,17 @@ def get_calendar_preview(calendar_type):
     key = request.args.get("key")
     days_ago = request.args.get("days_ago")
     period = request.args.get("period")
+    logger.info(
+        {
+            "path": request.path,
+            "info": {
+                "key": key,
+                "days_ago": days_ago,
+                "period": period,
+                "calendar_type": calendar_type,
+            },
+        }
+    )
 
     if calendar_type not in ["shows", "movies"]:
         return abort(404)
@@ -301,13 +350,34 @@ def get_calendar_preview(calendar_type):
     def get_backdrop(images):
         try:
             return f"https://image.tmdb.org/t/p/original{images.get('backdrops')[0].get('file_path')}"
-        except Exception:
+        except Exception as error:
+            logger.exception(
+                {
+                    "message": "Failed to get logo",
+                    "info": {
+                        "images": images,
+                        "entry": entry,
+                        "error": error,
+                    },
+                }
+            )
             return None
 
     def get_logo(images):
         try:
             return f"https://image.tmdb.org/t/p/original{images.get('logos')[0].get('file_path')}"
-        except Exception:
+        except Exception as error:
+            logger.exception(
+                {
+                    "message": "Failed to get logo",
+                    "datetime": datetime.datetime.now(),
+                    "info": {
+                        "images": images,
+                        "entry": entry,
+                        "error": error,
+                    },
+                }
+            )
             return None
 
     # Separate the entries by their respective dates
@@ -383,21 +453,11 @@ def get_calendar_preview(calendar_type):
     return response
 
 
-@app.route("/ical/<slug>/<type>")
-def get_calendar(slug, calendar_type):
-    """
-    Shortcut to get a calendar by slug
-    """
-    user = col.find_one({"user_slug": slug})
-    if not user:
-        return abort(404)
-    else:
-        redirect_url = f"{url_for('calendar_ical', calendar_type=calendar_type)}?key={user['user_id']}"
-        return redirect(redirect_url)
-
-
 @app.route("/api/user/<user_id>")
 def get_user(user_id):
+    """
+    Returns the username and slug of a user
+    """
     if not user_id:
         return "No user ID provided", 400
     user = col.find_one({"user_id": user_id})
@@ -411,6 +471,9 @@ def get_user(user_id):
 
 @app.route("/assets/<path:path>")
 def send_assets(path):
+    """
+    Send static assets
+    """
     path = path.replace("../", "")
     path = path.replace("./", "")
     path = path.replace("//", "/")

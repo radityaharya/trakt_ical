@@ -112,7 +112,7 @@ export const Main = ({ ...props }: IFrame1Props): JSX.Element => {
   }, []);
 
   return (
-    <div className="bg-[#1d1d1d] flex flex-col md:flex-row gap-0 items-start justify-start max-w-full relative overflow-hidden min-h-[100svh] md:max-h-screen select-text">
+    <div className="bg-[#1d1d1d] flex flex-col md:flex-row gap-0 items-start justify-start max-w-full relative overflow-hidden min-h-[100svh] md:max-h-screen select-none">
       <div className="border-solid border-[rgba(196,196,196,0.20)] md:border-r flex flex-col gap-2.5 items-start justify-start self-stretch shrink-0  w-full md:w-[350px] relative overflow-hidden">
         <div className="pt-5 pr-10 pb-2 pl-10 flex flex-col gap-2.5 items-start justify-center self-stretch shrink-0 relative overflow-hidden">
           <div
