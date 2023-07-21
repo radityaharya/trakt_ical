@@ -2,14 +2,12 @@ import { CalendarTypeActiveDefault } from "./CalendarTypeActiveDefault";
 import { DayPreviewStatusDefault } from "./DayPreviewStatusDefault";
 import React from "react";
 import type {
-  MovieItem,
   MovieData,
   MoviesResponse,
-  ShowItem,
   ShowData,
   ShowsResponse,
 } from "./types/api_responses";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import { Oval } from "react-loader-spinner";
 
 export interface IFrame1Props {}
@@ -18,17 +16,23 @@ export const Main = ({ ...props }: IFrame1Props): JSX.Element => {
   const key = new URLSearchParams(window.location.search).get("key");
   const base_url = window.location.href.split("?")[0];
 
-  if (!key) {
-    window.location.href = `${base_url}/auth`;
-    return <div></div>;
-  }
+  React.useEffect(() => {
+    const stored_key = localStorage.getItem("key");
+    if (stored_key && stored_key.length > 0 && !key) {
+      const url = new URL(window.location.href);
+      url.searchParams.set("key", stored_key);
+      window.location.href = url.toString();
+    } else if (key && key.length > 0) {
+      localStorage.setItem("key", key);
+    } else {
+      window.location.href = "/auth";
+    }
+  }, [key]);
 
   const [calendarData, setCalendarData] = React.useState(
     null as ShowsResponse | MoviesResponse | null,
   );
-  const [isDataLoading, setIsDataLoading] = React.useState(
-    false
-  )
+  const [isDataLoading, setIsDataLoading] = React.useState(false);
   const [calendarType, setCalendarType] = React.useState<"shows" | "movies">(
     "shows",
   );
@@ -42,12 +46,12 @@ export const Main = ({ ...props }: IFrame1Props): JSX.Element => {
 
   const debouncedFetch = useRef(
     debounce((url: string) => {
-      setIsDataLoading(true)
+      setIsDataLoading(true);
       fetch(url)
         .then((response) => response.json())
         .then((data) => {
           setCalendarData(data as ShowsResponse | MoviesResponse);
-          setIsDataLoading(false)
+          setIsDataLoading(false);
         });
     }, 500),
   ).current;

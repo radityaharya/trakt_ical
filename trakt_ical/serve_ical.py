@@ -96,9 +96,60 @@ def authorize():
     """
     Redirects the user to the Trakt authorization page
     """
-    return redirect(
-        f'https://trakt.tv/oauth/authorize?response_type=code&client_id={CLIENT_ID}&redirect_uri={os.environ.get("HOST")}/trakt/callback'
-    )
+    return f"""
+    <html>
+    <head>
+    <title>Trakt iCal</title>
+    <style>
+    body {{
+        font-family: sans-serif;
+        text-align: center;
+    }}
+    main {{
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        display: flex;
+        flex-direction: column;
+    }}
+    a {{
+        display: inline-block;
+        padding: 10px 20px;
+        background-color: #2c3e50;
+        color: #fff;
+        text-decoration: none;
+        border-radius: 5px;
+    }}
+    a:hover {{
+        background-color: #34495e;
+    }}
+    </style>
+    </head>
+    <body>
+    <main>
+    <a href="https://trakt.tv/oauth/authorize?response_type=code&client_id={CLIENT_ID}&redirect_uri={os.environ.get("HOST")}/trakt/callback">Authorize with Trakt</a>
+    <p> You will be redirected to Trakt.tv to authorize this app. </p>
+    <p id="countdown">Redirecting in 5 seconds...</p>
+    </main>
+    </body>
+    <script>
+    function countdown() {{
+        var i = 5;
+        var interval = setInterval(function() {{
+            i--;
+            if (i == 0) {{
+                clearInterval(interval);
+                window.location.href = "https://trakt.tv/oauth/authorize?response_type=code&client_id={CLIENT_ID}&redirect_uri={os.environ.get("HOST")}/trakt/callback";
+            }}
+            document.querySelector("#countdown").innerHTML = "Redirecting in " + i + " seconds...";
+        }}, 1000);
+    }}
+    countdown();
+    </script>
+    </html>
+    """
 
 
 @app.route("/trakt/callback")
@@ -133,9 +184,6 @@ def index():
     """
     This page is shown after the user has been authenticated
     """
-    key = request.args.get("key")
-    if not key:
-        return redirect(url_for("authorize"))
     return send_from_directory(app.static_folder, "index.html")
 
 

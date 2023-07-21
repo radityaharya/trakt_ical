@@ -26,12 +26,16 @@ export const PreviewItem = ({ ...props }: IPreviewItemProps): JSX.Element => {
         hour12: true,
       })
     : "Unknown";
-  
-  const info_pill = props.type_of === "shows" ? (
-    <Pill type_of="network" text={props.data?.network ?? "Unknown"} />
-  ) : (
-    <Pill type_of="network" text={new Date(air_time ?? 0 * 1000).getFullYear().toString()} />
-  );
+
+  const info_pill =
+    props.type_of === "shows" ? (
+      <Pill type_of="network" text={props.data?.network ?? "Unknown"} />
+    ) : (
+      <Pill
+        type_of="network"
+        text={new Date(air_time ?? 0 * 1000).getFullYear().toString()}
+      />
+    );
 
   return (
     <div className="border-solid border-[#2a2a2a]/20 border-[0.5px] flex flex-col gap-0 items-center justify-end w-[350px] h-[200px] relative overflow-hidden">
@@ -44,7 +48,7 @@ export const PreviewItem = ({ ...props }: IPreviewItemProps): JSX.Element => {
         />
       </div>
       <img
-        className="shrink-0 w-[193.47px] h-[75px] relative z-10"
+        className="shrink-0 w-[193.47px] h-[75px] relative z-10 object-scale-down"
         src={props.data?.logo ?? "https://via.placeholder.com/193.47x75"}
       />
 

@@ -36,6 +36,7 @@ If you prefer to host the application yourself, follow the steps below:
    - `PORT`: The port on which you will be hosting the application.
    - `TRAKT_CLIENT_ID`: Obtain this from [https://trakt.tv/oauth/applications](https://trakt.tv/oauth/applications).
    - `TRAKT_CLIENT_SECRET`: Obtain this from [https://trakt.tv/oauth/applications](https://trakt.tv/oauth/applications).
+   - `TMDB_ACCESS_TOKEN`: Obtain this from [https://developers.themoviedb.org/3/getting-started/introduction](https://developers.themoviedb.org/3/getting-started/introduction).
 
 3. Ensure that the application is accessible to the internet, as Google Calendar needs to access it for proper functionality.
 
