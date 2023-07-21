@@ -18,7 +18,6 @@ export const PreviewItem = ({ ...props }: IPreviewItemProps): JSX.Element => {
       ? props.data?.airs_at_unix
       : props.data?.released_unix;
 
-  // convert to 12 hour time using Date object
   var air_time_str = air_time
     ? new Date(air_time * 1000).toLocaleTimeString("en-US", {
         hour: "numeric",
@@ -33,7 +32,9 @@ export const PreviewItem = ({ ...props }: IPreviewItemProps): JSX.Element => {
     ) : (
       <Pill
         type_of="network"
-        text={new Date(air_time ?? 0 * 1000).getFullYear().toString()}
+        text={props.data?.released_unix
+          ? new Date(props.data?.released_unix * 1000).getFullYear().toString()
+          : "Unknown"}
       />
     );
 
