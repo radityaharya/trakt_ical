@@ -7,3 +7,4 @@ trakt_config.json
 data/
 **/node_modules/**
 **/cache/**
+dist/

@@ -6,7 +6,7 @@ export interface ICalendarTypeActiveDefaultProps {
   onClick?: () => void; // New prop for onClick event
 }
 
-export const CalendarTypeActiveDefault = ({
+export const CalendarType = ({
   active = false,
   text,
   onClick, // Destructure the onClick prop
@@ -20,7 +20,7 @@ export const CalendarTypeActiveDefault = ({
 
   return (
     <div
-      className="pr-10 pl-10 flex flex-row gap-2.5 items-start justify-start shrink-0 w-[350px] relative"
+      className="flex flex-row gap-2.5 items-start justify-start shrink-0 w-full relative"
       onClick={onClick} // Pass onClick event to the div
     >
       <div
@@ -33,4 +33,4 @@ export const CalendarTypeActiveDefault = ({
   );
 };
 
-export default CalendarTypeActiveDefault;
+export default CalendarType;

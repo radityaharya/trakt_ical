@@ -1,4 +1,4 @@
-import { CalendarTypeActiveDefault } from "./CalendarTypeActiveDefault";
+import { CalendarType } from "./CalendarTypes";
 import { DayPreviewStatusDefault } from "./DayPreviewStatusDefault";
 import React from "react";
 import type {
@@ -113,8 +113,8 @@ export const Main = ({ ...props }: IFrame1Props): JSX.Element => {
 
   return (
     <div className="bg-[#1d1d1d] flex flex-col md:flex-row gap-0 items-start justify-start max-w-full relative overflow-hidden min-h-[100svh] md:max-h-screen select-none">
-      <div className="border-solid border-[rgba(196,196,196,0.20)] md:border-r flex flex-col gap-2.5 items-start justify-start self-stretch shrink-0  w-full md:w-[350px] relative overflow-hidden">
-        <div className="pt-5 pr-10 pb-2 pl-10 flex flex-col gap-2.5 items-start justify-center self-stretch shrink-0 relative overflow-hidden">
+      <div className="pl-6 md:pr-10 md:pl-10 border-solid border-[rgba(196,196,196,0.20)] md:border-r flex flex-col gap-2.5 items-start justify-start self-stretch shrink-0  w-full md:w-[350px] relative overflow-hidden">
+        <div className="pt-5 pb-2 flex flex-col gap-2.5 items-start justify-center self-stretch shrink-0 relative overflow-hidden">
           <div
             className="text-[#ffffff] text-left relative self-stretch"
             style={{ font: "700 40px 'Inter', sans-serif" }}
@@ -123,7 +123,7 @@ export const Main = ({ ...props }: IFrame1Props): JSX.Element => {
           </div>
         </div>
 
-        <div className="pl-10 pr-10 flex flex-col gap-2.5 items-start justify-start self-stretch shrink-0 relative text-[#d4d4d4]/50 text-sm">
+        <div className="flex flex-col gap-2.5 items-start justify-start self-stretch shrink-0 relative text-[#d4d4d4]/50 text-sm">
           <p>
             Showing <strong>{userinfo.username}'s</strong> calendar
           </p>
@@ -131,7 +131,7 @@ export const Main = ({ ...props }: IFrame1Props): JSX.Element => {
 
         <div className="flex flex-col gap-2.5 items-start justify-start self-stretch flex-1 relative">
           <div className="flex flex-col gap-[5px] items-start justify-start self-stretch shrink-0 relative overflow-hidden">
-            <div className="pt-[5px] pr-10 pb-[5px] pl-10 flex flex-row gap-2.5 items-start justify-start self-stretch shrink-0 relative">
+            <div className="pt-[5px] pb-[5px] flex flex-row gap-2.5 items-start justify-start self-stretch shrink-0 relative">
               <div
                 className="text-[#d4d4d4] text-left relative"
                 style={{ font: "400 16px 'Inter', sans-serif" }}
@@ -139,19 +139,19 @@ export const Main = ({ ...props }: IFrame1Props): JSX.Element => {
                 Calendars
               </div>
             </div>
-            <CalendarTypeActiveDefault
+            <CalendarType
               active={calendarType === "shows" ? true : false}
               text="Shows"
               onClick={() => handleCalendarTypeChange("shows")}
             />
-            <CalendarTypeActiveDefault
+            <CalendarType
               text="Movies"
               onClick={() => handleCalendarTypeChange("movies")}
               active={calendarType === "movies" ? true : false}
             />
           </div>
           <div className="flex flex-col gap-[5px] items-start justify-start self-stretch shrink-0 relative overflow-hidden">
-            <div className="pt-[5px] pr-10 pb-[5px] pl-10 flex flex-row gap-2.5 items-start justify-start self-stretch shrink-0 relative">
+            <div className="pt-[5px] pb-[5px] flex flex-row gap-2.5 items-start justify-start self-stretch shrink-0 relative">
               <div
                 className="text-[#d4d4d4] text-left relative"
                 style={{ font: "400 16px 'Inter', sans-serif" }}
@@ -160,7 +160,7 @@ export const Main = ({ ...props }: IFrame1Props): JSX.Element => {
               </div>
             </div>
 
-            <div className="pr-10 pl-10 flex flex-row gap-2.5 items-start justify-start self-stretch shrink-0 relative">
+            <div className="flex flex-row gap-2.5 items-start justify-start self-stretch shrink-0 relative">
               <div
                 className="text-[#d4d4d4] text-left relative flex flex-col gap-2.5"
                 style={{ font: "700 24px 'Inter', sans-serif" }}
@@ -184,7 +184,7 @@ export const Main = ({ ...props }: IFrame1Props): JSX.Element => {
               </div>
             </div>
 
-            <div className="pr-10 pl-10 flex flex-row gap-2.5 items-start justify-start self-stretch shrink-0 relative">
+            <div className="flex flex-row gap-2.5 items-start justify-start self-stretch shrink-0 relative">
               <div
                 className="text-[#d4d4d4] text-left relative flex flex-col gap-2.5"
                 style={{ font: "700 24px 'Inter', sans-serif" }}
@@ -270,7 +270,7 @@ interface IClickableTextProps {
 const ClickableText = ({ text, target }: IClickableTextProps) => {
   return (
     <div
-      className={`pr-10 pl-10 flex flex-row gap-2.5 items-start justify-start self-stretch shrink-0 relative cursor-pointer`}
+      className={`flex flex-row gap-2.5 items-start justify-start self-stretch shrink-0 relative cursor-pointer`}
     >
       <div
         className={`text-[#ffffff] text-left relative`}
