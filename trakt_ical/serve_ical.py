@@ -302,7 +302,7 @@ def calendar_ical(calendar_type):
 
 
 @app.route("/<calendar_type>/json")
-@cache.cached(timeout=43200, query_string=["key", "days_ago", "period"])
+@cache.cached(timeout=3600, query_string=["key", "days_ago", "period"])
 def get_calendar_preview(calendar_type):
     """
     Returns a JSON response with the calendar preview.
