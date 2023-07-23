@@ -349,7 +349,7 @@ def get_calendar_preview(calendar_type):
 
     def get_backdrop(images):
         try:
-            return f"https://image.tmdb.org/t/p/original{images.get('backdrops')[0].get('file_path')}"
+            return f"https://image.tmdb.org/t/p/w500{images.get('backdrops')[0].get('file_path')}"
         except Exception as error:
             logger.exception(
                 {
