@@ -22,9 +22,9 @@ from flask import (
     send_from_directory,
     url_for,
 )
-
 from flask_caching import Cache
 from util import decrypt, encrypt
+import sentry_sdk
 
 from trakt_api import TraktAPI
 from tmdb_api import TMDB
@@ -46,6 +46,17 @@ cache = Cache(app)
 tmdb = TMDB()
 
 load_dotenv(override=True)
+
+sentry_sdk.init(
+    dsn=os.environ.get("SENTRY_DSN"),
+    # Set traces_sample_rate to 1.0 to capture 100%
+    # of transactions for performance monitoring.
+    traces_sample_rate=1.0,
+    # Set profiles_sample_rate to 1.0 to profile 100%
+    # of sampled transactions.
+    # We recommend adjusting this value in production.
+    profiles_sample_rate=1.0,
+)
 
 APPLICATION_ID = os.environ.get("TRAKT_APPLICATION_ID")
 CLIENT_ID = os.environ.get("TRAKT_CLIENT_ID")
