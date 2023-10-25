@@ -1,5 +1,13 @@
 # Trakt ICal
 
+---
+
+This project is no longer maintained. If you are looking for a similar solution, please check out [Showtime](https://github.com/radityaharya/showtime), a revamped version of Trakt ICal that offers more features and better performance. Showtime is also available as a hosted service or a self-hosted application.
+
+Please note that the hosted service for Trakt ICal is still up and running, but it will be discontinued in a few months. It’s recommended to migrate to Showtime as soon as possible.
+
+---
+
 Trakt ICal is a script that generates an ICal file for your Trakt.tv calendar, which you can import into your calendar application or serve through a Flask server to automatically import it into your Google Calendar. This readme provides instructions on how to set up and use Trakt ICal.
 
 ## Prerequisites
