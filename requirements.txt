@@ -8,3 +8,4 @@ pytrakt @ git+https://github.com/radityaharya/python-pytrakt.git@main
 pymongo[srv]
 gunicorn
 sentry-sdk[flask]
+werkzeug>=3.0.1 # not directly required, pinned by Snyk to avoid a vulnerability
